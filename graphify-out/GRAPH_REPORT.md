@@ -1,16 +1,16 @@
 # Graph Report - MyCodexAgentMonitor  (2026-07-26)
 
 ## Corpus Check
-- 30 files · ~696,772 words
+- 30 files · ~697,410 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 324 nodes · 474 edges · 21 communities (19 shown, 2 thin omitted)
+- 332 nodes · 483 edges · 21 communities (19 shown, 2 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 2 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `64004944`
+- Built from commit: `9d8a01d9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -38,8 +38,8 @@
 ## God Nodes (most connected - your core abstractions)
 1. `로컬 Codex 실시간 현황판 설계` - 16 edges
 2. `AppServerClient` - 15 edges
-3. `reduceThreadRecords()` - 14 edges
-4. `SnapshotStore` - 14 edges
+3. `SnapshotStore` - 15 edges
+4. `reduceThreadRecords()` - 14 edges
 5. `에이전트 세션 목록 정렬 및 상호작용 스펙` - 13 edges
 6. `normalizeStatus()` - 10 edges
 7. `JsonlTailer` - 9 edges
@@ -73,16 +73,16 @@ Cohesion: 0.13
 Nodes (32): ACTIVE_CHILD_STATUSES, compareValues(), durationInSeconds(), formatDuration(), formatGoalStatus(), formatTokenCount(), formatUtcTime(), getPlanProgress() (+24 more)
 
 ### Community 2 - "package.json"
-Cohesion: 0.10
-Nodes (18): JsonlTailer, buildChild(), buildCurrentWork(), buildSessions(), CHILD_SOURCE_KINDS, cloneOrNull(), compareLastActivity(), epochSecondsToMs() (+10 more)
+Cohesion: 0.12
+Nodes (17): buildChild(), buildCurrentWork(), buildSessions(), CHILD_SOURCE_KINDS, cloneOrNull(), compareLastActivity(), epochSecondsToMs(), normalizeGoal() (+9 more)
 
 ### Community 3 - "App.jsx"
 Cohesion: 0.20
 Nodes (9): Findings, 디자인 QA, 브라우저 검증, 비교 대상, 비교 이력, 이번 구현, 이전 구현, 필수 충실도 점검 (+1 more)
 
 ### Community 4 - "prepare-sites-build.mjs"
-Cohesion: 0.11
-Nodes (26): activityKind(), addDuration(), applyEventRecord(), applyResponseRecord(), applyTurnItems(), applyTurnTerminalState(), applyUserMessage(), assertInside() (+18 more)
+Cohesion: 0.10
+Nodes (27): activityKind(), addDuration(), applyEventRecord(), applyResponseRecord(), applyTurnItems(), applyTurnTerminalState(), applyUserMessage(), assertInside() (+19 more)
 
 ### Community 5 - "getPlanProgress"
 Cohesion: 0.20
@@ -121,7 +121,7 @@ Cohesion: 0.33
 Nodes (5): Task 1: 세션 모델을 테스트 우선으로 확장, Task 2: 목록 정렬과 Live/Paused를 연결, Task 3: 균형형 라이브 활동 표현 추가, Task 4: 검증과 문서 동기화, 에이전트 세션 라이브 동작 구현 계획
 
 ### Community 14 - "agent-model.test.mjs"
-Cohesion: 0.12
+Cohesion: 0.08
 Nodes (17): CONTENT_TYPES, createMonitorServer(), EMPTY_SNAPSHOT, listen(), readFile(), RETRY_DELAYS_MS, runCli(), sendFile() (+9 more)
 
 ### Community 15 - "normalizeStatus"
@@ -143,9 +143,9 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `AppServerClient` connect `agent-model.js` to `agent-model.test.mjs`?**
   _High betweenness centrality (0.031) - this node is a cross-community bridge._
 - **Why does `SnapshotStore` connect `package.json` to `agent-model.test.mjs`?**
-  _High betweenness centrality (0.021) - this node is a cross-community bridge._
+  _High betweenness centrality (0.024) - this node is a cross-community bridge._
 - **Why does `로컬 Codex 실시간 현황판 설계` connect `vite.config.mjs` to `에이전트 세션 목록 정렬 및 상호작용 스펙`?**
-  _High betweenness centrality (0.017) - this node is a cross-community bridge._
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **What connects `RETRY_DELAYS_MS`, `EMPTY_SNAPSHOT`, `PLAN_STATUS` to the rest of the system?**
   _125 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `dependencies` be split into smaller, more focused modules?**
@@ -153,4 +153,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `디자인 QA` be split into smaller, more focused modules?**
   _Cohesion score 0.1282051282051282 - nodes in this community are weakly interconnected._
 - **Should `package.json` be split into smaller, more focused modules?**
-  _Cohesion score 0.09523809523809523 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.11827956989247312 - nodes in this community are weakly interconnected._
