@@ -18,10 +18,10 @@
 | IMP-010 | 필수 | 루트 세션 메모리 생명주기 | Task 3 Steps 2, 5 | 등록 세션을 제거하지 않고 10분 후 Idle, terminal duration 고정, 새 Turn에서 Running 복귀를 지원한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 구현 | Idle·terminal·resume 테스트 | 통과 | 미판정 |  |
 | IMP-011 | 필수 | 하위 Thread 탐색·등록·집계 | Task 3 Steps 1, 3, 5, 6 | 모든 `subAgent*` source와 다중 페이지 자손을 부모 상세에만 등록하고 토큰을 중복 없이 한 번 합산한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 구현 | 두 번째 하위 페이지·빠른 종료·부모/토큰 테스트 | 통과 | 미판정 |  |
 | IMP-012 | 필수 | Goal·wire 조립과 원자적 수집 | Task 3 Steps 2, 5, 6 | Goal null/성공/실패를 구분하고 모든 필수 읽기가 성공할 때만 registry·관찰·offset·watermark·wire를 커밋한다. 실패 시 마지막 정상 세션과 성공 시각을 유지한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 구현 | Goal 없음/실패/복구·실제 Tailer A/B 재읽기 테스트 | 통과 | 미판정 |  |
-| IMP-013 | 필수 | 루프백 HTTP API와 정적 제공 | Task 4 Steps 1, 2, 4 | `127.0.0.1:4310`에만 바인딩하고 GET snapshot no-store, 정적 asset, SPA HTML fallback, API 404/405와 경로 이탈 403을 제공한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 미착수 | API·asset·fallback·method·path·EADDRINUSE 테스트 | 미검증 | 미판정 |  |
-| IMP-014 | 필수 | 단일 3초 수집 루프와 JSONL 오류 복구 | Task 4 Steps 2, 5 | 겹치지 않는 `setTimeout` 하나로 정확히 3초마다 수집하며 세션 읽기 실패는 같은 child와 Store를 유지해 다음 주기에 복구한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 미착수 | 가짜 timer·초기/후속 collect·중복 timer 테스트 | 미검증 | 미판정 |  |
-| IMP-015 | 필수 | App Server 백오프 재시작 | Task 4 Steps 2, 5 | App Server 오류에서 1·2·4·최대 5초로 같은 client를 재시작하고 Store·registry·offset·watermark를 보존한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 미착수 | 두 child·장애 중 quick complete·복구 테스트 | 미검증 | 미판정 |  |
-| IMP-016 | 필수 | 단일 monitor 명령·브라우저·종료 | Task 4 Steps 2, 5, 6 | `npm run monitor`가 build 후 HTTP bind에 성공한 다음 App Server를 시작하고, listen 완료 뒤 `--open`일 때만 브라우저를 연다. SIGINT/SIGTERM에서 timer·HTTP·자신의 App Server 트리만 정리하며 포트 대체는 하지 않는다. | `monitor/server.mjs`; `package.json`; `tests/monitor-server.test.mjs` | 미착수 | monitor server 종료·spawn·실제 실행과 점유 포트에서 App Server·브라우저 미호출 및 잔류 래퍼 없음 테스트 | 미검증 | 미판정 |  |
+| IMP-013 | 필수 | 루프백 HTTP API와 정적 제공 | Task 4 Steps 1, 2, 4 | `127.0.0.1:4310`에만 바인딩하고 GET snapshot no-store, 정적 asset, SPA HTML fallback, API 404/405와 경로 이탈 403을 제공한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 구현 | API·asset·fallback·method·path·EADDRINUSE 테스트 | 통과 | 미판정 |  |
+| IMP-014 | 필수 | 단일 3초 수집 루프와 JSONL 오류 복구 | Task 4 Steps 2, 5 | 겹치지 않는 `setTimeout` 하나로 정확히 3초마다 수집하며 세션 읽기 실패는 같은 child와 Store를 유지해 다음 주기에 복구한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 구현 | 가짜 timer·초기/후속 collect·중복 timer 테스트 | 통과 | 미판정 |  |
+| IMP-015 | 필수 | App Server 백오프 재시작 | Task 4 Steps 2, 5 | App Server 오류에서 1·2·4·최대 5초로 같은 client를 재시작하고 Store·registry·offset·watermark를 보존한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 구현 | 두 child·장애 중 quick complete·복구 테스트 | 통과 | 미판정 |  |
+| IMP-016 | 필수 | 단일 monitor 명령·브라우저·종료 | Task 4 Steps 2, 5, 6 | `npm run monitor`가 build 후 HTTP bind에 성공한 다음 App Server를 시작하고, listen 완료 뒤 `--open`일 때만 브라우저를 연다. SIGINT/SIGTERM에서 timer·HTTP·자신의 App Server 트리만 정리하며 포트 대체는 하지 않는다. | `monitor/server.mjs`; `package.json`; `tests/monitor-server.test.mjs` | 구현 | monitor server 종료·spawn·실제 실행과 점유 포트에서 App Server·브라우저 미호출 및 잔류 래퍼 없음 테스트 | 통과 | 미판정 |  |
 | IMP-017 | 필수 | 원시 값 표시 포맷 | Task 5 Steps 1, 3 | duration, token, Goal 상태, UTC 시각을 요구된 표시 문자열로 바꾸고 결측은 `—`로 표시한다. | `src/agent-model.js`; `tests/agent-model.test.mjs` | 미착수 | formatter 단위 테스트 | 미검증 | 미판정 |  |
 | IMP-018 | 필수 | 스냅샷 변경 비교 | Task 5 Steps 1, 3 | 토큰·Task·child·handoff·activity 변경만 안정 ID로 계산하고 첫 루트는 강조하지 않으며 입력을 변경하지 않는다. | `getSnapshotChanges`; `tests/agent-model.test.mjs` | 미착수 | 이전/다음 snapshot 비교 테스트 | 미검증 | 미판정 |  |
 | IMP-019 | 필수 | React 3초 폴링과 Live/Paused 적용 | Task 6 Steps 1~4 | API를 즉시·3초마다 no-store로 폴링하고 최신/적용 snapshot을 분리한다. Paused 중에도 최신 snapshot과 `feedStatus`는 갱신하되 표시 화면은 고정하고, Live 복귀 시 최신 하나만 적용한다. fetch 자체가 실패하면 표시 세션을 유지하고 연결 상태만 Error로 바꾼다. | `src/App.jsx`; `tests/app-identity.test.mjs` | 미착수 | identity 테스트와 Paused 중 feed 갱신·fetch 실패 표시 보존·Live 복귀 브라우저 확인 | 미검증 | 미판정 |  |
@@ -53,7 +53,7 @@
 - 초기 staged 경로: 없음
 - 초기 unstaged 경로: 없음
 - 초기 untracked 경로: 없음
-- 이번 루프가 생성하거나 수정한 경로: `docs/implementation/2026-07-26-local-codex-live-monitor-implementation-map.md`, `monitor/app-server-client.mjs`, `monitor/session-log.mjs`, `monitor/snapshot-store.mjs`, `tests/app-server-client.test.mjs`, `tests/session-log.test.mjs`, `tests/snapshot-store.test.mjs`
+- 이번 루프가 생성하거나 수정한 경로: `docs/implementation/2026-07-26-local-codex-live-monitor-implementation-map.md`, `monitor/app-server-client.mjs`, `monitor/session-log.mjs`, `monitor/snapshot-store.mjs`, `monitor/server.mjs`, `package.json`, `tests/app-server-client.test.mjs`, `tests/monitor-server.test.mjs`, `tests/session-log.test.mjs`, `tests/snapshot-store.test.mjs`
 - 이번 루프 중 생성한 커밋: `145aa2e feat: add read-only Codex app server client`, `2e42460 feat: tail and normalize Codex session logs`
 
 ## 보류 항목
@@ -81,6 +81,11 @@
 - Task 3 RED: `node --test tests/snapshot-store.test.mjs`가 `ERR_MODULE_NOT_FOUND`로 예상 실패.
 - Task 3 GREEN: `node --test tests/snapshot-store.test.mjs` 9개 통과.
 - Task 3 회귀: `npm test` 43개 통과.
+- Task 4 RED: `node --test tests/monitor-server.test.mjs`가 `ERR_MODULE_NOT_FOUND`로 예상 실패.
+- Task 4 GREEN: `node --test tests/monitor-server.test.mjs` 5개 통과.
+- Task 4 회귀: `npm test` 48개 통과.
+- Task 4 빌드: `npm run build` 통과.
+- Task 4 Sites: `npm run test:sites` 4개 통과.
 
 ## 남은 리스크
 
