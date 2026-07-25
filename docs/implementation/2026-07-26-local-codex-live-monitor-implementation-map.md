@@ -22,8 +22,8 @@
 | IMP-014 | 필수 | 단일 3초 수집 루프와 JSONL 오류 복구 | Task 4 Steps 2, 5 | 겹치지 않는 `setTimeout` 하나로 정확히 3초마다 수집하며 세션 읽기 실패는 같은 child와 Store를 유지해 다음 주기에 복구한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 구현 | 가짜 timer·초기/후속 collect·중복 timer 테스트 | 통과 | 미판정 |  |
 | IMP-015 | 필수 | App Server 백오프 재시작 | Task 4 Steps 2, 5 | App Server 오류에서 1·2·4·최대 5초로 같은 client를 재시작하고 Store·registry·offset·watermark를 보존한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 구현 | 두 child·장애 중 quick complete·복구 테스트 | 통과 | 미판정 |  |
 | IMP-016 | 필수 | 단일 monitor 명령·브라우저·종료 | Task 4 Steps 2, 5, 6 | `npm run monitor`가 build 후 HTTP bind에 성공한 다음 App Server를 시작하고, listen 완료 뒤 `--open`일 때만 브라우저를 연다. SIGINT/SIGTERM에서 timer·HTTP·자신의 App Server 트리만 정리하며 포트 대체는 하지 않는다. | `monitor/server.mjs`; `package.json`; `tests/monitor-server.test.mjs` | 구현 | monitor server 종료·spawn·실제 실행과 점유 포트에서 App Server·브라우저 미호출 및 잔류 래퍼 없음 테스트 | 통과 | 미판정 |  |
-| IMP-017 | 필수 | 원시 값 표시 포맷 | Task 5 Steps 1, 3 | duration, token, Goal 상태, UTC 시각을 요구된 표시 문자열로 바꾸고 결측은 `—`로 표시한다. | `src/agent-model.js`; `tests/agent-model.test.mjs` | 미착수 | formatter 단위 테스트 | 미검증 | 미판정 |  |
-| IMP-018 | 필수 | 스냅샷 변경 비교 | Task 5 Steps 1, 3 | 토큰·Task·child·handoff·activity 변경만 안정 ID로 계산하고 첫 루트는 강조하지 않으며 입력을 변경하지 않는다. | `getSnapshotChanges`; `tests/agent-model.test.mjs` | 미착수 | 이전/다음 snapshot 비교 테스트 | 미검증 | 미판정 |  |
+| IMP-017 | 필수 | 원시 값 표시 포맷 | Task 5 Steps 1, 3 | duration, token, Goal 상태, UTC 시각을 요구된 표시 문자열로 바꾸고 결측은 `—`로 표시한다. | `src/agent-model.js`; `tests/agent-model.test.mjs` | 구현 | formatter 단위 테스트 | 통과 | 미판정 |  |
+| IMP-018 | 필수 | 스냅샷 변경 비교 | Task 5 Steps 1, 3 | 토큰·Task·child·handoff·activity 변경만 안정 ID로 계산하고 첫 루트는 강조하지 않으며 입력을 변경하지 않는다. | `getSnapshotChanges`; `tests/agent-model.test.mjs` | 구현 | 이전/다음 snapshot 비교 테스트 | 통과 | 미판정 |  |
 | IMP-019 | 필수 | React 3초 폴링과 Live/Paused 적용 | Task 6 Steps 1~4 | API를 즉시·3초마다 no-store로 폴링하고 최신/적용 snapshot을 분리한다. Paused 중에도 최신 snapshot과 `feedStatus`는 갱신하되 표시 화면은 고정하고, Live 복귀 시 최신 하나만 적용한다. fetch 자체가 실패하면 표시 세션을 유지하고 연결 상태만 Error로 바꾼다. | `src/App.jsx`; `tests/app-identity.test.mjs` | 미착수 | identity 테스트와 Paused 중 feed 갱신·fetch 실패 표시 보존·Live 복귀 브라우저 확인 | 미검증 | 미판정 |  |
 | IMP-020 | 필수 | 상위 목록 실제 wire 전환과 목록 동작 보존 | Task 6 Steps 4, 5, 7 | 실제 루트 세션만 기존 운영 순서와 열 정렬로 표시한다. 상위 행은 `Codex / Root agent`, `currentActivity.label`, `durationSeconds`, `startedAt`, skills 수, Plan 완료/전체, Goal 상태, active/total child 수를 사용한다. 선택 유지·5행 내부 스크롤·reduced motion을 보존한다. | `SessionRow`; `src/App.jsx`; `src/styles.css`; `src/agent-model.js`; 기존 모델·identity 테스트 | 미착수 | 실제 wire 필드 identity/렌더 검사와 회귀 테스트·브라우저 정렬/선택/높이 확인 | 미검증 | 미판정 |  |
 | IMP-021 | 필수 | 루트 상세 wire 직접 소비 | Task 6 Step 5 | 현재 작업·활동·duration·tokens·skills·Plan·Goal을 계약 필드로 안전하게 표시하고 없는 영역은 빈 상태로 렌더링한다. | `src/App.jsx`; `src/agent-model.js` | 미착수 | identity 테스트·비어 있지 않은 wire 렌더·브라우저 확인 | 미검증 | 미판정 |  |
@@ -53,8 +53,8 @@
 - 초기 staged 경로: 없음
 - 초기 unstaged 경로: 없음
 - 초기 untracked 경로: 없음
-- 이번 루프가 생성하거나 수정한 경로: `docs/implementation/2026-07-26-local-codex-live-monitor-implementation-map.md`, `monitor/app-server-client.mjs`, `monitor/session-log.mjs`, `monitor/snapshot-store.mjs`, `monitor/server.mjs`, `package.json`, `tests/app-server-client.test.mjs`, `tests/monitor-server.test.mjs`, `tests/session-log.test.mjs`, `tests/snapshot-store.test.mjs`
-- 이번 루프 중 생성한 커밋: `145aa2e feat: add read-only Codex app server client`, `2e42460 feat: tail and normalize Codex session logs`
+- 이번 루프가 생성하거나 수정한 경로: `docs/implementation/2026-07-26-local-codex-live-monitor-implementation-map.md`, `monitor/app-server-client.mjs`, `monitor/session-log.mjs`, `monitor/snapshot-store.mjs`, `monitor/server.mjs`, `package.json`, `src/agent-model.js`, `tests/agent-model.test.mjs`, `tests/app-server-client.test.mjs`, `tests/monitor-server.test.mjs`, `tests/session-log.test.mjs`, `tests/snapshot-store.test.mjs`
+- 이번 루프 중 생성한 커밋: `145aa2e feat: add read-only Codex app server client`, `2e42460 feat: tail and normalize Codex session logs`, `19286a8 feat: assemble live Codex session snapshots`, `0c330d4 feat: run the monitor on a loopback server`
 
 ## 보류 항목
 
@@ -86,6 +86,10 @@
 - Task 4 회귀: `npm test` 48개 통과.
 - Task 4 빌드: `npm run build` 통과.
 - Task 4 Sites: `npm run test:sites` 4개 통과.
+- Task 5 RED: `node --test tests/agent-model.test.mjs`가 새 formatter export 부재로 예상 실패.
+- Task 5 GREEN: `node --test tests/agent-model.test.mjs` 14개 통과.
+- Task 5 회귀: `npm test` 51개 통과.
+- Task 5 빌드: `npm run build` 통과.
 
 ## 남은 리스크
 

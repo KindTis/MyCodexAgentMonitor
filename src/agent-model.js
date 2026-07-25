@@ -160,6 +160,88 @@ export function getRelativeTime(lastActivityAt, now = new Date()) {
   return `${Math.floor(seconds / 3600)}h ago`;
 }
 
+export function formatTokenCount(value) {
+  return Number.isFinite(value) ? new Intl.NumberFormat("en-US").format(value) : "—";
+}
+
+export function formatDuration(seconds) {
+  if (!Number.isFinite(seconds)) return "—";
+  const total = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const rest = total % 60;
+  return hours
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`
+    : `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+export function formatUtcTime(value) {
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? "—" : new Date(time).toISOString().slice(11, 19);
+}
+
+const GOAL_STATUS_LABELS = {
+  active: "Active",
+  paused: "Paused",
+  blocked: "Blocked",
+  usageLimited: "Usage limited",
+  budgetLimited: "Budget limited",
+  complete: "Complete",
+};
+
+export function formatGoalStatus(status) {
+  return GOAL_STATUS_LABELS[status] ?? "—";
+}
+
+export function getSnapshotChanges(previous, next) {
+  const previousSessions = new Map(
+    (previous?.sessions ?? []).map((session) => [session.id, session]),
+  );
+
+  return Object.fromEntries((next?.sessions ?? []).map((session) => {
+    const before = previousSessions.get(session.id);
+    if (!before) {
+      return [session.id, {
+        tokenKeys: [],
+        taskTitles: [],
+        childIds: [],
+        handoffChildIds: [],
+        activityIds: [],
+      }];
+    }
+    const beforeTasks = new Map(
+      (before.plan?.tasks ?? []).map((task) => [task.title, task.status]),
+    );
+    const beforeChildren = new Map(
+      (before.children ?? []).map((child) => [child.id, child.status]),
+    );
+    const beforeActivities = new Set(
+      (before.activity ?? []).map((activity) => activity.id),
+    );
+
+    return [session.id, {
+      tokenKeys: ["root", "children", "total"].filter(
+        (key) => before.tokens?.[key] !== session.tokens?.[key],
+      ),
+      taskTitles: (session.plan?.tasks ?? [])
+        .filter((task) => beforeTasks.get(task.title) !== task.status)
+        .map((task) => task.title),
+      childIds: (session.children ?? [])
+        .filter((child) => beforeChildren.get(child.id) !== child.status)
+        .map((child) => child.id),
+      handoffChildIds: (session.children ?? [])
+        .filter((child) => (
+          child.status === "complete"
+          && beforeChildren.get(child.id) !== "complete"
+        ))
+        .map((child) => child.id),
+      activityIds: (session.activity ?? [])
+        .filter((activity) => !beforeActivities.has(activity.id))
+        .map((activity) => activity.id),
+    }];
+  }));
+}
+
 export function getRowScrollTop({ rowIndex, rowHeight, viewportHeight, scrollTop }) {
   if (rowIndex < 0) return scrollTop;
   const rowTop = rowIndex * rowHeight;
