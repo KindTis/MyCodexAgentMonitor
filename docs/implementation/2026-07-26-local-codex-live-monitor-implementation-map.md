@@ -9,10 +9,10 @@
 | IMP-001 | 필수 | 설치된 Codex 프로토콜 계약 확인 | 확인된 로컬 Codex 계약, Task 1 Step 1 | 설치 버전이 `0.145.0`이고 `thread/list`, `thread/read`, `thread/goal/get`, Thread·Turn·Goal 필드가 계획과 일치한다. | 임시 생성 TypeScript 스키마 | 구현 | `codex --version`; `codex app-server generate-ts --experimental` | 통과 | 미판정 |  |
 | IMP-002 | 필수 | 읽기 전용 App Server 핸드셰이크와 요청 | Task 1 Steps 2, 4 | 고정 Windows 명령으로 시작하고 experimental 초기화 뒤 허용된 세 읽기 메서드만 JSONL 요청한다. | `monitor/app-server-client.mjs`; `tests/app-server-client.test.mjs` | 구현 | `node --test tests/app-server-client.test.mjs` | 통과 | 미판정 |  |
 | IMP-003 | 필수 | App Server 클라이언트 오류·재시작·종료 생명주기 | Task 1 Steps 2, 4 | 모든 요청에 5초 deadline을 적용하고 늦은 응답을 무시하며 timeout·exit·stop 뒤 같은 인스턴스를 재시작한다. 종료 시 생성한 래퍼 PID 트리만 종료한다. | `monitor/app-server-client.mjs`; `tests/app-server-client.test.mjs` | 구현 | timeout·late response·두 child·process tree 테스트 | 통과 | 미판정 |  |
-| IMP-004 | 필수 | Codex 홈과 세션 경로 경계 | Task 2 Steps 1, 4 | `CODEX_HOME` 우선, `USERPROFILE/.codex` fallback을 사용하고 홈 밖 경로를 내용 노출 없이 거절한다. `Thread.path === null`인 ephemeral Thread는 JSONL 읽기를 생략하고 App Server Turn만 축약하며 JSONL 전용 값은 비운다. | `monitor/session-log.mjs`; `monitor/snapshot-store.mjs`; `tests/session-log.test.mjs`; `tests/snapshot-store.test.mjs` | 미착수 | 경로 해석·경계 오류·`path: null` Turn-only 테스트 | 미검증 | 미판정 |  |
-| IMP-005 | 필수 | 트랜잭션형 JSONL 증분 tail | Task 2 Steps 1, 4 | 바이트 오프셋, 불완전 마지막 줄 보류, 손상 완결 줄 오류, batch commit/discard와 재읽기를 지원한다. | `monitor/session-log.mjs`; `tests/session-log.test.mjs` | 미착수 | 불완전 줄·손상 줄·truncate·batch 재시도 테스트 | 미검증 | 미판정 |  |
-| IMP-006 | 필수 | 현재 Turn 상태와 도구 호출 상관관계 | Task 2 Steps 2, 5 | 이전 Turn 상태를 버리고 call/output을 연결하며 입력 대기·실패·중단·대기·계획·완료·실행·Idle 우선순위를 적용한다. | `reduceThreadRecords`; `tests/session-log.test.mjs` | 미착수 | 현재 Turn 격리·`notLoaded` 입력·호출 완료·종료 시간 테스트 | 미검증 | 미판정 |  |
-| IMP-007 | 필수 | 작업·스킬·Plan·토큰·활동 정규화 | Task 2 Steps 2, 5 | 구조 블록을 제거한 사용자 작업, `$skill`, Plan 상태, 총 토큰, 최신 활동 4개와 최소 도구 분류를 만들고 질문·결과·reasoning 본문은 복제하지 않는다. | `monitor/session-log.mjs`; `tests/session-log.test.mjs` | 미착수 | reducer·분류·민감 본문 비노출 테스트 | 미검증 | 미판정 |  |
+| IMP-004 | 필수 | Codex 홈과 세션 경로 경계 | Task 2 Steps 1, 4 | `CODEX_HOME` 우선, `USERPROFILE/.codex` fallback을 사용하고 홈 밖 경로를 내용 노출 없이 거절한다. `Thread.path === null`인 ephemeral Thread는 JSONL 읽기를 생략하고 App Server Turn만 축약하며 JSONL 전용 값은 비운다. | `monitor/session-log.mjs`; `monitor/snapshot-store.mjs`; `tests/session-log.test.mjs`; `tests/snapshot-store.test.mjs` | 구현 중 | 경로 해석·경계 오류·`path: null` Turn-only 테스트 | 미검증 | 미판정 |  |
+| IMP-005 | 필수 | 트랜잭션형 JSONL 증분 tail | Task 2 Steps 1, 4 | 바이트 오프셋, 불완전 마지막 줄 보류, 손상 완결 줄 오류, batch commit/discard와 재읽기를 지원한다. | `monitor/session-log.mjs`; `tests/session-log.test.mjs` | 구현 | 불완전 줄·손상 줄·truncate·batch 재시도 테스트 | 통과 | 미판정 |  |
+| IMP-006 | 필수 | 현재 Turn 상태와 도구 호출 상관관계 | Task 2 Steps 2, 5 | 이전 Turn 상태를 버리고 call/output을 연결하며 입력 대기·실패·중단·대기·계획·완료·실행·Idle 우선순위를 적용한다. | `reduceThreadRecords`; `tests/session-log.test.mjs` | 구현 | 현재 Turn 격리·`notLoaded` 입력·호출 완료·종료 시간 테스트 | 통과 | 미판정 |  |
+| IMP-007 | 필수 | 작업·스킬·Plan·토큰·활동 정규화 | Task 2 Steps 2, 5 | 구조 블록을 제거한 사용자 작업, `$skill`, Plan 상태, 총 토큰, 최신 활동 4개와 최소 도구 분류를 만들고 질문·결과·reasoning 본문은 복제하지 않는다. | `monitor/session-log.mjs`; `tests/session-log.test.mjs` | 구현 | reducer·분류·민감 본문 비노출 테스트 | 통과 | 미판정 |  |
 | IMP-008 | 필수 | 최초 루트 카탈로그 탐색 | Task 3 Steps 1, 3, 5 | 모든 루트 source를 `updated_at desc`로 페이지 순회하고 시작 전 최근 10분 내 미완료 루트만 최초 등록한다. | `monitor/snapshot-store.mjs`; `tests/snapshot-store.test.mjs` | 미착수 | source 필터·페이지 경계·오래된/완료 제외 테스트 | 미검증 | 미판정 |  |
 | IMP-009 | 필수 | 후속 discovery watermark와 빠른 종료 등록 | Task 3 Steps 1, 3, 5 | 성공 refresh 시작 epoch만 watermark로 커밋하고 장애 기간을 되짚으며 시작 이후 생성·새 Turn·`task_started` 증거가 있으면 수집 전 종료돼도 등록한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 미착수 | 동률 경계·실패 유지·10분 장애·quick complete 테스트 | 미검증 | 미판정 |  |
 | IMP-010 | 필수 | 루트 세션 메모리 생명주기 | Task 3 Steps 2, 5 | 등록 세션을 제거하지 않고 10분 후 Idle, terminal duration 고정, 새 Turn에서 Running 복귀를 지원한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 미착수 | Idle·terminal·resume 테스트 | 미검증 | 미판정 |  |
@@ -53,8 +53,8 @@
 - 초기 staged 경로: 없음
 - 초기 unstaged 경로: 없음
 - 초기 untracked 경로: 없음
-- 이번 루프가 생성하거나 수정한 경로: `docs/implementation/2026-07-26-local-codex-live-monitor-implementation-map.md`, `monitor/app-server-client.mjs`, `tests/app-server-client.test.mjs`
-- 이번 루프 중 생성한 커밋: 없음
+- 이번 루프가 생성하거나 수정한 경로: `docs/implementation/2026-07-26-local-codex-live-monitor-implementation-map.md`, `monitor/app-server-client.mjs`, `monitor/session-log.mjs`, `tests/app-server-client.test.mjs`, `tests/session-log.test.mjs`
+- 이번 루프 중 생성한 커밋: `145aa2e feat: add read-only Codex app server client`
 
 ## 보류 항목
 
@@ -75,6 +75,9 @@
 - Task 1 RED: `node --test tests/app-server-client.test.mjs`가 `ERR_MODULE_NOT_FOUND`로 예상 실패.
 - Task 1 GREEN: `node --test tests/app-server-client.test.mjs` 8개 통과.
 - Task 1 회귀: `npm test` 24개 통과.
+- Task 2 RED: `node --test tests/session-log.test.mjs`가 `ERR_MODULE_NOT_FOUND`로 예상 실패.
+- Task 2 GREEN: `node --test tests/session-log.test.mjs` 10개 통과.
+- Task 2 회귀: `npm test` 34개 통과.
 
 ## 남은 리스크
 
