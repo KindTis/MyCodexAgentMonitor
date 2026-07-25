@@ -55,6 +55,7 @@ function createFakeCatalog(initialThreads = []) {
   const threads = [...initialThreads];
   const goals = new Map();
   const listCalls = [];
+  const readCalls = [];
   let failList = false;
   let failGoal = false;
 
@@ -69,6 +70,7 @@ function createFakeCatalog(initialThreads = []) {
 
   return {
     listCalls,
+    readCalls,
     addThread(item) {
       threads.push(item);
     },
@@ -105,6 +107,7 @@ function createFakeCatalog(initialThreads = []) {
       };
     },
     async readThread(threadId) {
+      readCalls.push(threadId);
       return { thread: structuredClone(threads.find(({ id }) => id === threadId)) };
     },
     async getGoal(threadId) {
@@ -187,6 +190,7 @@ test("시작 시 최근 미완료 루트 source만 등록하고 child는 부모 
       updatedAt: unix("2026-07-26T05:59:20Z"),
     }),
     thread("old-root", { updatedAt: unix("2026-07-26T05:40:00Z") }),
+    thread("boundary-root", { updatedAt: unix("2026-07-26T05:50:00Z") }),
     thread("complete-before-start", { updatedAt: unix("2026-07-26T05:59:00Z") }),
     thread("child-a", {
       parentThreadId: "active-root",
@@ -203,6 +207,9 @@ test("시작 시 최근 미완료 루트 source만 등록하고 child는 부모 
       })],
       "exec-root": [sessionEvent("2026-07-26T05:59:20Z", "task_started", {
         turn_id: "exec-root-turn",
+      })],
+      "boundary-root": [sessionEvent("2026-07-26T05:59:00Z", "task_started", {
+        turn_id: "boundary-root-turn",
       })],
       "complete-before-start": [
         sessionEvent("2026-07-26T05:58:00Z", "task_started", {
@@ -232,6 +239,7 @@ test("시작 시 최근 미완료 루트 source만 등록하고 child는 부모 
   assert.ok(harness.appServer.listCalls.some(
     ({ sourceKinds }) => JSON.stringify(sourceKinds) === JSON.stringify(CHILD_SOURCE_KINDS),
   ));
+  assert.ok(harness.appServer.readCalls.includes("boundary-root"));
 });
 
 test("Store 생성 뒤 수집 전에 시작·완료된 root와 child도 등록한다", async () => {

@@ -170,6 +170,12 @@ test("이전 Turn을 버리고 현재 Turn의 작업·스킬·Plan·토큰만 �
       message: "$superpowers:using-superpowers 현황판을 구현해.\n"
         + "<environment_context>구조 정보</environment_context>",
     }),
+    event("2026-07-26T06:00:01.100Z", "user_message", {
+      message: "$myloop 마지막 작업을 확인해.",
+    }),
+    event("2026-07-26T06:00:01.200Z", "user_message", {
+      message: "<environment_context>구조 정보만 있음</environment_context>",
+    }),
     toolCall("2026-07-26T06:00:02Z", "update_plan", JSON.stringify({
       plan: [
         { step: "수집기 구현", status: "in_progress" },
@@ -189,8 +195,8 @@ test("이전 Turn을 버리고 현재 Turn의 작업·스킬·Plan·토큰만 �
   );
 
   assert.equal(result.turnId, "current");
-  assert.equal(result.assignedWork, "현황판을 구현해.");
-  assert.deepEqual(result.skills, ["superpowers:using-superpowers"]);
+  assert.equal(result.assignedWork, "마지막 작업을 확인해.");
+  assert.deepEqual(result.skills, ["superpowers:using-superpowers", "myloop"]);
   assert.deepEqual(result.plan.tasks, [
     { title: "수집기 구현", status: "active" },
     { title: "화면 연결", status: "queued" },
@@ -320,7 +326,7 @@ test("activeFlags와 terminal Turn 상태를 우선하고 종료 시각에서 du
   assert.equal(interrupted.durationSeconds, 5);
 });
 
-test("task_complete의 종료 상태를 보존하고 오래된 미완료 Turn은 Idle로 내린다", () => {
+test("task_complete를 보존하고 미지 사건을 무시해 정확히 10분부터 Idle로 내린다", () => {
   const complete = reduceThreadRecords(
     null,
     [
@@ -338,11 +344,24 @@ test("task_complete의 종료 상태를 보존하고 오래된 미완료 Turn은
   assert.equal(complete.durationSeconds, 6);
 
   const idleStart = Date.parse("2026-07-26T06:00:00Z");
+  const records = [
+    event("2026-07-26T06:00:00Z", "task_started", { turn_id: "turn-1" }),
+    event("2026-07-26T06:09:59.999Z", "unknown_event"),
+  ];
+  const running = reduceThreadRecords(
+    null,
+    records,
+    activeThread("turn-1"),
+    idleStart + IDLE_AFTER_MS - 1,
+  );
+  assert.equal(running.status, "running");
+
   const idle = reduceThreadRecords(
     null,
-    [event("2026-07-26T06:00:00Z", "task_started", { turn_id: "turn-1" })],
+    records,
     activeThread("turn-1"),
-    idleStart + IDLE_AFTER_MS + 1,
+    idleStart + IDLE_AFTER_MS,
   );
   assert.equal(idle.status, "idle");
+  assert.equal(idle.lastActivityAt, "2026-07-26T06:00:00.000Z");
 });

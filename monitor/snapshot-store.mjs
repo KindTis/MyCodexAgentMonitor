@@ -236,7 +236,7 @@ export class SnapshotStore {
     if (!initial) return false;
 
     return (
-      epochSecondsToMs(thread.updatedAt) >= this.monitorStartedAt - IDLE_AFTER_MS
+      epochSecondsToMs(thread.updatedAt) > this.monitorStartedAt - IDLE_AFTER_MS
       && !TERMINAL_STATUSES.has(observation.status)
     );
   }

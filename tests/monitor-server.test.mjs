@@ -12,6 +12,7 @@ import { createServer as createNodeServer } from "node:net";
 
 import {
   COLLECTION_INTERVAL_MS,
+  SnapshotStore,
 } from "../monitor/snapshot-store.mjs";
 import {
   createMonitorServer,
@@ -19,6 +20,8 @@ import {
   PORT,
   startMonitor,
 } from "../monitor/server.mjs";
+
+const unix = (value) => Date.parse(value) / 1000;
 
 async function createStaticFixture(t) {
   const distDir = await mkdtemp(path.join(tmpdir(), "codex-monitor-dist-"));
@@ -260,6 +263,137 @@ test("APP_SERVER_UNAVAILABLE은 같은 client를 백오프로 재시작하고 �
   assert.equal(appServer.starts, 2);
   assert.equal(store.initializeCalls, 1);
   assert.equal(store.collectCalls, 2);
+  assert.deepEqual(timers.scheduled(), [COLLECTION_INTERVAL_MS]);
+});
+
+test("연속 App Server 실패를 1·2·4·5초로 재시도하고 같은 Store로 장기 장애 사건을 복구한다", async (t) => {
+  const distDir = await createStaticFixture(t);
+  const timers = createTimerHarness();
+  let nowMs = Date.parse("2026-07-26T06:00:00Z");
+  let failNextList = false;
+  const threads = [];
+  const records = new Map();
+  const successfulChildren = [];
+  const appServer = {
+    starts: 0,
+    stops: 0,
+    async start() {
+      this.starts += 1;
+      if (this.starts >= 2 && this.starts <= 4) throw new Error("start failed");
+      successfulChildren.push(this.starts);
+    },
+    async stop() {
+      this.stops += 1;
+    },
+    async listThreads({ ancestorThreadId }) {
+      if (failNextList) {
+        failNextList = false;
+        throw new Error("app server exited");
+      }
+      const data = ancestorThreadId
+        ? threads.filter(({ parentThreadId }) => parentThreadId === ancestorThreadId)
+        : threads.filter(({ parentThreadId }) => parentThreadId == null);
+      return { data, nextCursor: null };
+    },
+    async readThread(threadId) {
+      return { thread: structuredClone(threads.find(({ id }) => id === threadId)) };
+    },
+    async getGoal() {
+      return { goal: null };
+    },
+  };
+  const tailer = {
+    beginBatch() {},
+    async read(filePath) { return structuredClone(records.get(filePath) ?? []); },
+    commitBatch() {},
+    discardBatch() {},
+  };
+  const store = new SnapshotStore({
+    appServer,
+    tailer,
+    codexHome: "C:\\Users\\dev\\.codex",
+    now: () => nowMs,
+  });
+  const runtime = await startMonitor({
+    distDir,
+    port: 0,
+    appServer,
+    store,
+    setTimeoutFn: timers.setTimeoutFn,
+    clearTimeoutFn: timers.clearTimeoutFn,
+  });
+  t.after(() => runtime.close());
+
+  nowMs = Date.parse("2026-07-26T06:11:00Z");
+  const rootPath = "C:\\Users\\dev\\.codex\\sessions\\quick-root.jsonl";
+  const childPath = "C:\\Users\\dev\\.codex\\sessions\\quick-child.jsonl";
+  threads.push(
+    {
+      id: "quick-root",
+      parentThreadId: null,
+      createdAt: unix("2026-07-26T06:05:00Z"),
+      updatedAt: unix("2026-07-26T06:05:02Z"),
+      source: "cli",
+      status: { type: "notLoaded" },
+      path: rootPath,
+      cwd: "C:\\repo",
+      name: null,
+      turns: [{
+        id: "root-turn",
+        items: [],
+        status: "completed",
+        startedAt: unix("2026-07-26T06:05:00Z"),
+        completedAt: unix("2026-07-26T06:05:02Z"),
+        durationMs: 2000,
+      }],
+    },
+    {
+      id: "quick-child",
+      parentThreadId: "quick-root",
+      createdAt: unix("2026-07-26T06:05:00Z"),
+      updatedAt: unix("2026-07-26T06:05:01Z"),
+      source: "subAgent",
+      status: { type: "notLoaded" },
+      path: childPath,
+      cwd: "C:\\repo",
+      agentNickname: "Verifier",
+      agentRole: "Child agent",
+      turns: [{
+        id: "child-turn",
+        items: [],
+        status: "completed",
+        startedAt: unix("2026-07-26T06:05:00Z"),
+        completedAt: unix("2026-07-26T06:05:01Z"),
+        durationMs: 1000,
+      }],
+    },
+  );
+  records.set(rootPath, [
+    { timestamp: "2026-07-26T06:05:00Z", type: "event_msg", payload: { type: "task_started", turn_id: "root-turn" } },
+    { timestamp: "2026-07-26T06:05:02Z", type: "event_msg", payload: { type: "task_complete", turn_id: "root-turn" } },
+  ]);
+  records.set(childPath, [
+    { timestamp: "2026-07-26T06:05:00Z", type: "event_msg", payload: { type: "task_started", turn_id: "child-turn" } },
+    { timestamp: "2026-07-26T06:05:01Z", type: "event_msg", payload: { type: "task_complete", turn_id: "child-turn" } },
+  ]);
+  failNextList = true;
+
+  await timers.runNext();
+  assert.deepEqual(timers.scheduled(), [1000]);
+  await timers.runNext();
+  assert.deepEqual(timers.scheduled(), [2000]);
+  await timers.runNext();
+  assert.deepEqual(timers.scheduled(), [4000]);
+  await timers.runNext();
+  assert.deepEqual(timers.scheduled(), [5000]);
+  await timers.runNext();
+
+  assert.equal(runtime.store, store);
+  assert.deepEqual(successfulChildren, [1, 5]);
+  assert.equal(appServer.starts, 5);
+  assert.equal(store.snapshot.connectionStatus, "connected");
+  assert.equal(store.snapshot.sessions[0].status, "complete");
+  assert.equal(store.snapshot.sessions[0].children[0].status, "complete");
   assert.deepEqual(timers.scheduled(), [COLLECTION_INTERVAL_MS]);
 });
 

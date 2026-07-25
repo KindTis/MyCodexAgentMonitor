@@ -199,6 +199,9 @@ function createObservation(turnId, turn) {
 
 function applyEventRecord(observation, record) {
   const payload = record.payload ?? {};
+  const recognized = ["user_message", "token_count", "task_complete"].includes(payload.type)
+    || ["cancelled", "stopped"].includes(payload.status);
+  if (!recognized) return;
   touch(observation, record.timestamp);
 
   if (payload.type === "user_message") {
@@ -225,7 +228,7 @@ function applyTurnItems(observation, turn) {
       .filter(({ type }) => type === "text")
       .map(({ text: value }) => value)
       .join("\n");
-    if (!observation.assignedWork) applyUserMessage(observation, text);
+    applyUserMessage(observation, text);
     observation.skills = unique([
       ...observation.skills,
       ...item.content.filter(({ type }) => type === "skill").map(({ name }) => name),
@@ -239,7 +242,8 @@ function applyUserMessage(observation, value) {
     ...observation.skills,
     ...[...message.matchAll(SKILL_REFERENCE)].map((match) => match[1]),
   ]);
-  observation.assignedWork = message.replace(SKILL_REFERENCE, " ").replace(/\s+/g, " ").trim();
+  const assignedWork = message.replace(SKILL_REFERENCE, " ").replace(/\s+/g, " ").trim();
+  if (assignedWork) observation.assignedWork = assignedWork;
 }
 
 function applyResponseRecord(observation, record) {
@@ -356,7 +360,7 @@ function getStatus(observation, thread, turn, nowMs) {
   if (observation.terminalStatus === "complete") return "complete";
 
   const lastActivity = Date.parse(observation.lastActivityAt);
-  if (!Number.isNaN(lastActivity) && nowMs - lastActivity > IDLE_AFTER_MS) return "idle";
+  if (!Number.isNaN(lastActivity) && nowMs - lastActivity >= IDLE_AFTER_MS) return "idle";
   return "running";
 }
 
