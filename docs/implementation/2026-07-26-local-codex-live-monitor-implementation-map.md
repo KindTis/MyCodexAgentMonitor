@@ -9,15 +9,15 @@
 | IMP-001 | 필수 | 설치된 Codex 프로토콜 계약 확인 | 확인된 로컬 Codex 계약, Task 1 Step 1 | 설치 버전이 `0.145.0`이고 `thread/list`, `thread/read`, `thread/goal/get`, Thread·Turn·Goal 필드가 계획과 일치한다. | 임시 생성 TypeScript 스키마 | 구현 | `codex --version`; `codex app-server generate-ts --experimental` | 통과 | 미판정 |  |
 | IMP-002 | 필수 | 읽기 전용 App Server 핸드셰이크와 요청 | Task 1 Steps 2, 4 | 고정 Windows 명령으로 시작하고 experimental 초기화 뒤 허용된 세 읽기 메서드만 JSONL 요청한다. | `monitor/app-server-client.mjs`; `tests/app-server-client.test.mjs` | 구현 | `node --test tests/app-server-client.test.mjs` | 통과 | 미판정 |  |
 | IMP-003 | 필수 | App Server 클라이언트 오류·재시작·종료 생명주기 | Task 1 Steps 2, 4 | 모든 요청에 5초 deadline을 적용하고 늦은 응답을 무시하며 timeout·exit·stop 뒤 같은 인스턴스를 재시작한다. 종료 시 생성한 래퍼 PID 트리만 종료한다. | `monitor/app-server-client.mjs`; `tests/app-server-client.test.mjs` | 구현 | timeout·late response·두 child·process tree 테스트 | 통과 | 미판정 |  |
-| IMP-004 | 필수 | Codex 홈과 세션 경로 경계 | Task 2 Steps 1, 4 | `CODEX_HOME` 우선, `USERPROFILE/.codex` fallback을 사용하고 홈 밖 경로를 내용 노출 없이 거절한다. `Thread.path === null`인 ephemeral Thread는 JSONL 읽기를 생략하고 App Server Turn만 축약하며 JSONL 전용 값은 비운다. | `monitor/session-log.mjs`; `monitor/snapshot-store.mjs`; `tests/session-log.test.mjs`; `tests/snapshot-store.test.mjs` | 구현 중 | 경로 해석·경계 오류·`path: null` Turn-only 테스트 | 미검증 | 미판정 |  |
+| IMP-004 | 필수 | Codex 홈과 세션 경로 경계 | Task 2 Steps 1, 4 | `CODEX_HOME` 우선, `USERPROFILE/.codex` fallback을 사용하고 홈 밖 경로를 내용 노출 없이 거절한다. `Thread.path === null`인 ephemeral Thread는 JSONL 읽기를 생략하고 App Server Turn만 축약하며 JSONL 전용 값은 비운다. | `monitor/session-log.mjs`; `monitor/snapshot-store.mjs`; `tests/session-log.test.mjs`; `tests/snapshot-store.test.mjs` | 구현 | 경로 해석·경계 오류·`path: null` Turn-only 테스트 | 통과 | 미판정 |  |
 | IMP-005 | 필수 | 트랜잭션형 JSONL 증분 tail | Task 2 Steps 1, 4 | 바이트 오프셋, 불완전 마지막 줄 보류, 손상 완결 줄 오류, batch commit/discard와 재읽기를 지원한다. | `monitor/session-log.mjs`; `tests/session-log.test.mjs` | 구현 | 불완전 줄·손상 줄·truncate·batch 재시도 테스트 | 통과 | 미판정 |  |
 | IMP-006 | 필수 | 현재 Turn 상태와 도구 호출 상관관계 | Task 2 Steps 2, 5 | 이전 Turn 상태를 버리고 call/output을 연결하며 입력 대기·실패·중단·대기·계획·완료·실행·Idle 우선순위를 적용한다. | `reduceThreadRecords`; `tests/session-log.test.mjs` | 구현 | 현재 Turn 격리·`notLoaded` 입력·호출 완료·종료 시간 테스트 | 통과 | 미판정 |  |
 | IMP-007 | 필수 | 작업·스킬·Plan·토큰·활동 정규화 | Task 2 Steps 2, 5 | 구조 블록을 제거한 사용자 작업, `$skill`, Plan 상태, 총 토큰, 최신 활동 4개와 최소 도구 분류를 만들고 질문·결과·reasoning 본문은 복제하지 않는다. | `monitor/session-log.mjs`; `tests/session-log.test.mjs` | 구현 | reducer·분류·민감 본문 비노출 테스트 | 통과 | 미판정 |  |
-| IMP-008 | 필수 | 최초 루트 카탈로그 탐색 | Task 3 Steps 1, 3, 5 | 모든 루트 source를 `updated_at desc`로 페이지 순회하고 시작 전 최근 10분 내 미완료 루트만 최초 등록한다. | `monitor/snapshot-store.mjs`; `tests/snapshot-store.test.mjs` | 미착수 | source 필터·페이지 경계·오래된/완료 제외 테스트 | 미검증 | 미판정 |  |
-| IMP-009 | 필수 | 후속 discovery watermark와 빠른 종료 등록 | Task 3 Steps 1, 3, 5 | 성공 refresh 시작 epoch만 watermark로 커밋하고 장애 기간을 되짚으며 시작 이후 생성·새 Turn·`task_started` 증거가 있으면 수집 전 종료돼도 등록한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 미착수 | 동률 경계·실패 유지·10분 장애·quick complete 테스트 | 미검증 | 미판정 |  |
-| IMP-010 | 필수 | 루트 세션 메모리 생명주기 | Task 3 Steps 2, 5 | 등록 세션을 제거하지 않고 10분 후 Idle, terminal duration 고정, 새 Turn에서 Running 복귀를 지원한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 미착수 | Idle·terminal·resume 테스트 | 미검증 | 미판정 |  |
-| IMP-011 | 필수 | 하위 Thread 탐색·등록·집계 | Task 3 Steps 1, 3, 5, 6 | 모든 `subAgent*` source와 다중 페이지 자손을 부모 상세에만 등록하고 토큰을 중복 없이 한 번 합산한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 미착수 | 두 번째 하위 페이지·빠른 종료·부모/토큰 테스트 | 미검증 | 미판정 |  |
-| IMP-012 | 필수 | Goal·wire 조립과 원자적 수집 | Task 3 Steps 2, 5, 6 | Goal null/성공/실패를 구분하고 모든 필수 읽기가 성공할 때만 registry·관찰·offset·watermark·wire를 커밋한다. 실패 시 마지막 정상 세션과 성공 시각을 유지한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 미착수 | Goal 없음/실패/복구·실제 Tailer A/B 재읽기 테스트 | 미검증 | 미판정 |  |
+| IMP-008 | 필수 | 최초 루트 카탈로그 탐색 | Task 3 Steps 1, 3, 5 | 모든 루트 source를 `updated_at desc`로 페이지 순회하고 시작 전 최근 10분 내 미완료 루트만 최초 등록한다. | `monitor/snapshot-store.mjs`; `tests/snapshot-store.test.mjs` | 구현 | source 필터·페이지 경계·오래된/완료 제외 테스트 | 통과 | 미판정 |  |
+| IMP-009 | 필수 | 후속 discovery watermark와 빠른 종료 등록 | Task 3 Steps 1, 3, 5 | 성공 refresh 시작 epoch만 watermark로 커밋하고 장애 기간을 되짚으며 시작 이후 생성·새 Turn·`task_started` 증거가 있으면 수집 전 종료돼도 등록한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 구현 | 동률 경계·실패 유지·10분 장애·quick complete 테스트 | 통과 | 미판정 |  |
+| IMP-010 | 필수 | 루트 세션 메모리 생명주기 | Task 3 Steps 2, 5 | 등록 세션을 제거하지 않고 10분 후 Idle, terminal duration 고정, 새 Turn에서 Running 복귀를 지원한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 구현 | Idle·terminal·resume 테스트 | 통과 | 미판정 |  |
+| IMP-011 | 필수 | 하위 Thread 탐색·등록·집계 | Task 3 Steps 1, 3, 5, 6 | 모든 `subAgent*` source와 다중 페이지 자손을 부모 상세에만 등록하고 토큰을 중복 없이 한 번 합산한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 구현 | 두 번째 하위 페이지·빠른 종료·부모/토큰 테스트 | 통과 | 미판정 |  |
+| IMP-012 | 필수 | Goal·wire 조립과 원자적 수집 | Task 3 Steps 2, 5, 6 | Goal null/성공/실패를 구분하고 모든 필수 읽기가 성공할 때만 registry·관찰·offset·watermark·wire를 커밋한다. 실패 시 마지막 정상 세션과 성공 시각을 유지한다. | `SnapshotStore`; `tests/snapshot-store.test.mjs` | 구현 | Goal 없음/실패/복구·실제 Tailer A/B 재읽기 테스트 | 통과 | 미판정 |  |
 | IMP-013 | 필수 | 루프백 HTTP API와 정적 제공 | Task 4 Steps 1, 2, 4 | `127.0.0.1:4310`에만 바인딩하고 GET snapshot no-store, 정적 asset, SPA HTML fallback, API 404/405와 경로 이탈 403을 제공한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 미착수 | API·asset·fallback·method·path·EADDRINUSE 테스트 | 미검증 | 미판정 |  |
 | IMP-014 | 필수 | 단일 3초 수집 루프와 JSONL 오류 복구 | Task 4 Steps 2, 5 | 겹치지 않는 `setTimeout` 하나로 정확히 3초마다 수집하며 세션 읽기 실패는 같은 child와 Store를 유지해 다음 주기에 복구한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 미착수 | 가짜 timer·초기/후속 collect·중복 timer 테스트 | 미검증 | 미판정 |  |
 | IMP-015 | 필수 | App Server 백오프 재시작 | Task 4 Steps 2, 5 | App Server 오류에서 1·2·4·최대 5초로 같은 client를 재시작하고 Store·registry·offset·watermark를 보존한다. | `monitor/server.mjs`; `tests/monitor-server.test.mjs` | 미착수 | 두 child·장애 중 quick complete·복구 테스트 | 미검증 | 미판정 |  |
@@ -53,8 +53,8 @@
 - 초기 staged 경로: 없음
 - 초기 unstaged 경로: 없음
 - 초기 untracked 경로: 없음
-- 이번 루프가 생성하거나 수정한 경로: `docs/implementation/2026-07-26-local-codex-live-monitor-implementation-map.md`, `monitor/app-server-client.mjs`, `monitor/session-log.mjs`, `tests/app-server-client.test.mjs`, `tests/session-log.test.mjs`
-- 이번 루프 중 생성한 커밋: `145aa2e feat: add read-only Codex app server client`
+- 이번 루프가 생성하거나 수정한 경로: `docs/implementation/2026-07-26-local-codex-live-monitor-implementation-map.md`, `monitor/app-server-client.mjs`, `monitor/session-log.mjs`, `monitor/snapshot-store.mjs`, `tests/app-server-client.test.mjs`, `tests/session-log.test.mjs`, `tests/snapshot-store.test.mjs`
+- 이번 루프 중 생성한 커밋: `145aa2e feat: add read-only Codex app server client`, `2e42460 feat: tail and normalize Codex session logs`
 
 ## 보류 항목
 
@@ -78,6 +78,9 @@
 - Task 2 RED: `node --test tests/session-log.test.mjs`가 `ERR_MODULE_NOT_FOUND`로 예상 실패.
 - Task 2 GREEN: `node --test tests/session-log.test.mjs` 10개 통과.
 - Task 2 회귀: `npm test` 34개 통과.
+- Task 3 RED: `node --test tests/snapshot-store.test.mjs`가 `ERR_MODULE_NOT_FOUND`로 예상 실패.
+- Task 3 GREEN: `node --test tests/snapshot-store.test.mjs` 9개 통과.
+- Task 3 회귀: `npm test` 43개 통과.
 
 ## 남은 리스크
 

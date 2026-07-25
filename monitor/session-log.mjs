@@ -165,6 +165,7 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
   }
 
   const turn = thread.turns?.find(({ id }) => id === targetTurnId) ?? latestTurn;
+  applyTurnItems(observation, turn);
   applyTurnTerminalState(observation, turn);
   observation.currentActivity = getCurrentActivity(observation.pendingCalls);
   observation.status = getStatus(observation, thread, turn, nowMs);
@@ -201,12 +202,7 @@ function applyEventRecord(observation, record) {
   touch(observation, record.timestamp);
 
   if (payload.type === "user_message") {
-    const message = String(payload.message ?? "").replace(STRUCTURAL_BLOCK, " ");
-    observation.skills = unique([
-      ...observation.skills,
-      ...[...message.matchAll(SKILL_REFERENCE)].map((match) => match[1]),
-    ]);
-    observation.assignedWork = message.replace(SKILL_REFERENCE, " ").replace(/\s+/g, " ").trim();
+    applyUserMessage(observation, payload.message);
   } else if (payload.type === "token_count") {
     const tokens = payload.info?.total_token_usage?.total_tokens;
     if (Number.isFinite(tokens)) observation.tokens = tokens;
@@ -219,6 +215,31 @@ function applyEventRecord(observation, record) {
     observation.terminalStatus = payload.status;
     observation.endedAt = toIso(payload.completed_at ?? record.timestamp);
   }
+}
+
+function applyTurnItems(observation, turn) {
+  if (!turn) return;
+  for (const item of turn.items ?? []) {
+    if (item.type !== "userMessage") continue;
+    const text = item.content
+      .filter(({ type }) => type === "text")
+      .map(({ text: value }) => value)
+      .join("\n");
+    if (!observation.assignedWork) applyUserMessage(observation, text);
+    observation.skills = unique([
+      ...observation.skills,
+      ...item.content.filter(({ type }) => type === "skill").map(({ name }) => name),
+    ]);
+  }
+}
+
+function applyUserMessage(observation, value) {
+  const message = String(value ?? "").replace(STRUCTURAL_BLOCK, " ");
+  observation.skills = unique([
+    ...observation.skills,
+    ...[...message.matchAll(SKILL_REFERENCE)].map((match) => match[1]),
+  ]);
+  observation.assignedWork = message.replace(SKILL_REFERENCE, " ").replace(/\s+/g, " ").trim();
 }
 
 function applyResponseRecord(observation, record) {
