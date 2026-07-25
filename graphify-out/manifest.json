@@ -1,0 +1,247 @@
+{
+  ".codex/hooks.json": {
+    "mtime": 1784970633.734501,
+    "ast_hash": "1edecd709cf499b4de431f2e0e664e7f",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1784989448.6850438,
+    "ast_hash": "e81cb535471c65c3fde0ac1c4024f133",
+    "semantic_hash": ""
+  },
+  "CODEX_AGENT_STATUS.md": {
+    "mtime": 1784976179.4977741,
+    "ast_hash": "20e484c11fda42f6d5d0aa118eb4e0c0",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-25-agent-session-dashboard.md": {
+    "mtime": 1784982348.8592858,
+    "ast_hash": "096222b3ff28aacfed5be3a6ec762dfc",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-25-agent-session-live-dynamics.md": {
+    "mtime": 1784986685.0683782,
+    "ast_hash": "18d141b84160aa5cbbfd8e3c79129423",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-07-25-agent-session-sorting-design.md": {
+    "mtime": 1784989448.6860795,
+    "ast_hash": "0fe9f89ed6a008920d54e17a052fde5d",
+    "semantic_hash": ""
+  },
+  ".openai/hosting.json": {
+    "mtime": 1.0,
+    "ast_hash": "0c0e50dd4ba5ca1697360d9e78b65fd0",
+    "semantic_hash": ""
+  },
+  "package.json": {
+    "mtime": 1784989284.4465718,
+    "ast_hash": "2c6ef62642950040224c052e23a0e5a1",
+    "semantic_hash": ""
+  },
+  "scripts/prepare-sites-build.mjs": {
+    "mtime": 1.0,
+    "ast_hash": "efdb92be9abc28dca50711505953ac8b",
+    "semantic_hash": ""
+  },
+  "src/App.jsx": {
+    "mtime": 1784989676.7399025,
+    "ast_hash": "8fe05bfded4e590685417aa626387858",
+    "semantic_hash": ""
+  },
+  "src/agent-model.js": {
+    "mtime": 1784988296.7743602,
+    "ast_hash": "2f2f1aa451d865a13f4bd51f796ebdff",
+    "semantic_hash": ""
+  },
+  "src/main.jsx": {
+    "mtime": 1.0,
+    "ast_hash": "016c18bfcd1c1f50f66a6a4445e9b9fe",
+    "semantic_hash": ""
+  },
+  "tests/agent-model.test.mjs": {
+    "mtime": 1784988272.5885127,
+    "ast_hash": "c83e54828e9ee309124937127b10155a",
+    "semantic_hash": ""
+  },
+  "tests/app-identity.test.mjs": {
+    "mtime": 1784989583.8732774,
+    "ast_hash": "24c50abeed2a727bb8d1b94faf6e1d25",
+    "semantic_hash": ""
+  },
+  "tests/sites-worker.test.mjs": {
+    "mtime": 1.0,
+    "ast_hash": "ba3875f3c0980907476b0e64fda5f70e",
+    "semantic_hash": ""
+  },
+  "vite.config.mjs": {
+    "mtime": 1.0,
+    "ast_hash": "ac8ea59a0ef039bbd795175ac85cce67",
+    "semantic_hash": ""
+  },
+  "worker/index.js": {
+    "mtime": 1.0,
+    "ast_hash": "1142dd8df21bcc631e67e2bf63638b60",
+    "semantic_hash": ""
+  },
+  ".codex/migration-backup-2026-07-25/AGENTS.md": {
+    "mtime": 1784988172.7955887,
+    "ast_hash": "b764155245a7d2297dbe1ff1bd578167",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/design-qa.md": {
+    "mtime": 1784989691.7686257,
+    "ast_hash": "de67f61799c425409ce31331514c9094",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-25-formal-app-promotion.md": {
+    "mtime": 1784989861.396973,
+    "ast_hash": "91fe41f7aeb283751ef243a20799f371",
+    "semantic_hash": ""
+  },
+  "index.html": {
+    "mtime": 1784989676.7409017,
+    "ast_hash": "94f9f5eba7fe912219934309519b3d9a",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/design-qa-detail.png": {
+    "mtime": 1784975613.3247125,
+    "ast_hash": "a17a7ba8f79173cc0d30797dc3a0a7fd",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/design-qa-implementation.png": {
+    "mtime": 1784975580.240075,
+    "ast_hash": "e54e6165f2a3d9f3a91a5583229aa998",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/design-qa-mobile-detail.png": {
+    "mtime": 1784975613.326593,
+    "ast_hash": "c7971b31ad3616868b2d28e536471aac",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/design-qa-mobile.png": {
+    "mtime": 1784975613.3260891,
+    "ast_hash": "fa76bcda183a6f0030b37451c425541e",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/formal-page-1440x1024.png": {
+    "mtime": 1784989508.0229082,
+    "ast_hash": "6db61a2ae19895371e69258f3d484e9a",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/formal-page-comparison.png": {
+    "mtime": 1784989773.1170087,
+    "ast_hash": "84ba1f3eabb8718ba509374c65ae6f9a",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/comparison-detail.png": {
+    "mtime": 1784983033.365905,
+    "ast_hash": "4c88035720208914ae4a5f902d18ef5e",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/comparison-final-detail.png": {
+    "mtime": 1784983239.3673203,
+    "ast_hash": "b9339b178ed1bbad29c6382d88e6de75",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/comparison-final-full.png": {
+    "mtime": 1784983239.237453,
+    "ast_hash": "d079bedece0b0c93b67ff4f3ebca5fd1",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/comparison-final-ledger.png": {
+    "mtime": 1784983239.299199,
+    "ast_hash": "ad043b5832b576d91d10e3e47e3b7718",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/comparison-full.png": {
+    "mtime": 1784983033.2372365,
+    "ast_hash": "8a661ec20b1c598b8479fb391adae060",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/comparison-ledger.png": {
+    "mtime": 1784983033.3026361,
+    "ast_hash": "64579c26f564a657eb6781c79f86567c",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/implementation-1440x1024-v2.png": {
+    "mtime": 1784982878.0466526,
+    "ast_hash": "4816dd2e1146e538c8a2783369cd50cd",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/implementation-1440x1024.png": {
+    "mtime": 1784982792.5450737,
+    "ast_hash": "af0c02188152dac6013742b477854159",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/implementation-390x844-top.png": {
+    "mtime": 1784982982.139364,
+    "ast_hash": "648a4f7e31eb5d644a606fab5176cb3a",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/implementation-390x844.png": {
+    "mtime": 1784982970.2162168,
+    "ast_hash": "f08a3a8c196208b2b924c2518bc8b9df",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/implementation-final-1440x1024.png": {
+    "mtime": 1784983215.0431862,
+    "ast_hash": "0fdb85c7fd9cb3947643f356c3e14fb4",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/implementation-final-390x844.png": {
+    "mtime": 1784983256.8731914,
+    "ast_hash": "8a35a379a7f50cef661d8349be830369",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/implementation-final-v2-1440x1024.png": {
+    "mtime": 1784983079.344571,
+    "ast_hash": "1bb351d7cf1a65f2c3e120f459a1ed6e",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/legacy-captures/implementation-final-v3-1440x1024.png": {
+    "mtime": 1784983127.3643591,
+    "ast_hash": "2b77bc725f9dc9900f8131f45d4d4a97",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/qa-comparison-detail.png": {
+    "mtime": 1784987425.86242,
+    "ast_hash": "9672e60a7b52367dbb98dc951dec186f",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/qa-comparison-five-rows.png": {
+    "mtime": 1784988401.5513654,
+    "ast_hash": "2bce7f6174a09520c1d80d97174bff43",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/qa-comparison.png": {
+    "mtime": 1784987399.6705503,
+    "ast_hash": "d625aae5ec0ab2b7e5716fe776a99f82",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/qa-desktop-five-rows.png": {
+    "mtime": 1784988388.5653007,
+    "ast_hash": "7556438907b8b069eb6e4c4c46567f89",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/qa-desktop-live.png": {
+    "mtime": 1784987235.2112026,
+    "ast_hash": "b59b31627e413f1677fe50531ca8b69d",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/qa-mobile-five-rows.png": {
+    "mtime": 1784988421.3009498,
+    "ast_hash": "e42fefc3ab50367bc8f9bb9c637fff8d",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/qa-mobile-full.png": {
+    "mtime": 1784987353.5968742,
+    "ast_hash": "45c8c2847a53ea4aa49aa15526bd408a",
+    "semantic_hash": ""
+  },
+  "docs/design-qa/qa-mobile-live.png": {
+    "mtime": 1784987333.1620693,
+    "ast_hash": "328550fa2b7ff8d1a3ab7ce1c07c1181",
+    "semantic_hash": ""
+  }
+}

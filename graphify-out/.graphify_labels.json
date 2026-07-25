@@ -1,0 +1,21 @@
+{
+  "0": "dependencies",
+  "1": "디자인 QA",
+  "2": "package.json",
+  "3": "App.jsx",
+  "4": "prepare-sites-build.mjs",
+  "5": "getPlanProgress",
+  "6": "Prototype Instructions",
+  "7": "index.js",
+  "8": "AGENTS.md",
+  "9": "App",
+  "10": "vite.config.mjs",
+  "11": "에이전트 세션 목록 정렬 및 상호작용 스펙",
+  "12": "agent-model.js",
+  "13": "에이전트 세션 라이브 동작 구현 계획",
+  "14": "agent-model.test.mjs",
+  "15": "normalizeStatus",
+  "16": "getSessionMetrics",
+  "17": "app-identity.test.mjs",
+  "18": "vite.config.mjs"
+}
