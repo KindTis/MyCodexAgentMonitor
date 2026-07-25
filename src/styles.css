@@ -159,6 +159,18 @@ time,
   box-shadow: 0 0 9px rgb(94 214 198 / 70%);
 }
 
+.connection-state--connected {
+  color: var(--mint);
+}
+
+.connection-state--syncing {
+  color: var(--amber);
+}
+
+.connection-state--error {
+  color: var(--red);
+}
+
 .live-dot--paused {
   background: #667a80;
   box-shadow: none;

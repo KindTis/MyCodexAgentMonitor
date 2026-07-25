@@ -11,8 +11,19 @@ const indexSource = await readFile(new URL("../index.html", import.meta.url), "u
 test("uses the formal application identity", () => {
   assert.equal(packageJson.name, "my-codex-agent-monitor");
   assert.match(appSource, /My Codex Agent Monitor/);
-  assert.match(appSource, /Demo mode/);
   assert.doesNotMatch(appSource, /Concept prototype|Sample feed|prototype-pill|showPrototype/);
   assert.match(indexSource, /<title>Orbital Dispatch — My Codex Agent Monitor<\/title>/);
   assert.doesNotMatch(indexSource, /concept|prototype|컨셉/i);
+});
+
+test("실제 로컬 Codex 스냅샷을 사용한다", () => {
+  assert.match(appSource, /\/api\/snapshot/);
+  assert.match(appSource, /codex:\/\/threads\//);
+  assert.match(appSource, /currentActivity\?\.label/);
+  assert.match(appSource, /currentWork\?\.turnId/);
+  assert.match(appSource, /activity\.id/);
+  assert.match(appSource, /handoffChildIds/);
+  assert.doesNotMatch(appSource, /Demo mode|simulationEvents|applySimulationEvent/);
+  assert.doesNotMatch(appSource, /currentWork\.note|goal\.(?:title|detail|checkpoint)/);
+  assert.doesNotMatch(appSource, /session\.current(?:Step|Tool)|child\.(?:currentStep|session|tasks|work)/);
 });

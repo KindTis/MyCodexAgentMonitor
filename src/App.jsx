@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import gsap from "gsap";
 import {
   ArrowSquareOut,
@@ -12,10 +19,8 @@ import {
   CircleNotch,
   Clock,
   Code,
-  Compass,
   GitBranch,
   HourglassMedium,
-  MagnifyingGlass,
   Path,
   PauseCircle,
   Play,
@@ -32,11 +37,15 @@ import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 
 import {
-  applySimulationEvent,
+  formatDuration,
+  formatGoalStatus,
+  formatTokenCount,
+  formatUtcTime,
   getPlanProgress,
   getRelativeTime,
   getRowScrollTop,
   getSessionMetrics,
+  getSnapshotChanges,
   getVisibleSessions,
   normalizeStatus,
   SESSION_LEDGER_VISIBLE_ROWS,
@@ -77,467 +86,27 @@ const sortColumns = [
 ];
 
 const liveSteps = ["Reading files", "Calling tool", "Editing", "Testing", "Waiting"];
-const demoStartedAt = Date.parse("2026-07-25T14:37:00Z");
 
-const sessions = [
-  {
-    id: "dashboard-redesign",
-    name: "Planner",
-    role: "Root agent",
-    icon: Path,
-    color: "#5ed6c6",
-    session: "dashboard-redesign",
-    assignedWork: "Redesign agent session dashboard",
-    status: "waiting",
-    currentActivity: "Waiting for 2 child agents",
-    currentStep: "Waiting",
-    lastActivityAt: "2026-07-25T14:36:45Z",
-    startedAt: "2026-07-25T14:13:02Z",
-    duration: "24:15",
-    started: "Started 14:13:02",
-    currentWork: {
-      id: "TURN-7E42",
-      title: "Consolidate child-agent findings into the selected concept",
-      note: "The root turn is paused until the implementation and QA branches report back.",
-    },
-    tokens: { total: "112,840", root: "46,210", children: "66,630" },
-    skills: [
-      "superpowers:brainstorming",
-      "product-design:image-to-code",
-      "frontend-design",
-      "superpowers:using-superpowers",
-    ],
-    plan: {
-      title: "Agent monitor concept",
-      tasks: [
-        { title: "Define list-level decision data", status: "done" },
-        { title: "Model realistic session states", status: "done" },
-        { title: "Select the visual direction", status: "done" },
-        { title: "Build the responsive session ledger", status: "active" },
-        { title: "Verify child-agent disclosure", status: "waiting" },
-        { title: "Run visual QA", status: "queued" },
-        { title: "Prepare concept handoff", status: "queued" },
-      ],
-    },
-    goal: {
-      status: "active",
-      label: "Active",
-      title: "Make every active Codex session understandable at a glance",
-      detail:
-        "Keep list-level decisions scannable while preserving the full execution context one level deeper.",
-      checkpoint: "Last checkpoint · information architecture approved at 14:28",
-    },
-    children: [
-      {
-        id: "researcher",
-        name: "Researcher",
-        icon: MagnifyingGlass,
-        color: "#7ad7c8",
-        status: "complete",
-        session: "09:42",
-        tokens: "18.4k",
-        skills: ["product-design:get-context", "graphify"],
-        tasks: { completed: 3, total: 3 },
-        goal: null,
-        currentStep: "Returned result",
-        lastActivityAt: "2026-07-25T14:31:09Z",
-        work: "Audited the existing monitor and mapped the real Codex work shapes.",
-      },
-      {
-        id: "builder",
-        name: "Builder",
-        icon: Code,
-        color: "#e9a85c",
-        status: "running",
-        session: "14:06",
-        tokens: "38.8k",
-        skills: ["frontend-design", "image-to-code", "test-driven-development"],
-        tasks: { completed: 2, total: 5 },
-        goal: { label: "Active" },
-        currentStep: "Editing",
-        lastActivityAt: "2026-07-25T14:36:45Z",
-        work: "Implementing the selected ledger and session detail layout.",
-      },
-      {
-        id: "reviewer",
-        name: "Reviewer",
-        icon: ShieldCheck,
-        color: "#8fa9ff",
-        status: "waiting",
-        session: "06:18",
-        tokens: "9.4k",
-        skills: ["product-design:design-qa", "verification-before-completion"],
-        tasks: { completed: 1, total: 3 },
-        goal: null,
-        currentStep: "Waiting",
-        lastActivityAt: "2026-07-25T14:33:58Z",
-        work: "Waiting for the implementation preview before visual comparison.",
-      },
-    ],
-    activity: [
-      { time: "14:36:45", text: "Builder updated the responsive session ledger." },
-      { time: "14:33:58", text: "Reviewer entered a waiting state." },
-      { time: "14:31:09", text: "Researcher completed the workflow audit." },
-    ],
-  },
-  {
-    id: "event-stream",
-    name: "Builder",
-    role: "Root agent",
-    icon: Code,
-    color: "#e9a85c",
-    session: "event-stream",
-    assignedWork: "Normalize live Codex events",
-    status: "running",
-    currentActivity: "Parsing tool and turn events",
-    currentStep: "Calling tool",
-    currentTool: { name: "read event stream", startedAt: "2026-07-25T14:36:52Z" },
-    lastActivityAt: "2026-07-25T14:36:12Z",
-    startedAt: "2026-07-25T14:18:35Z",
-    duration: "18:42",
-    started: "Started 14:18:35",
-    currentWork: {
-      id: "TURN-81A9",
-      title: "Map raw event payloads to session state",
-      note: "Processing a single request with no delegated work.",
-    },
-    tokens: { total: "34,920", root: "34,920", children: "—" },
-    skills: ["diagnose", "test-driven-development"],
-    plan: {
-      title: "Event normalization",
-      tasks: [
-        { title: "Capture sample events", status: "done" },
-        { title: "Normalize state transitions", status: "active" },
-        { title: "Verify replay ordering", status: "queued" },
-      ],
-    },
-    goal: null,
-    children: [],
-    activity: [
-      { time: "14:36:12", text: "Read tool-call completion event." },
-      { time: "14:35:48", text: "Normalized running → waiting transition." },
-    ],
-  },
-  {
-    id: "cli-research",
-    parentSessionId: "dashboard-redesign",
-    name: "Researcher",
-    role: "Subagent",
-    icon: MagnifyingGlass,
-    color: "#72d2c2",
-    session: "cli-research",
-    assignedWork: "Inspect Codex session metadata",
-    status: "complete",
-    currentActivity: "Findings returned to parent",
-    currentStep: "Returned result",
-    lastActivityAt: "2026-07-25T14:31:09Z",
-    startedAt: "2026-07-25T14:21:27Z",
-    duration: "09:42",
-    started: "Completed 14:31:09",
-    currentWork: {
-      id: "CHILD-0F31",
-      title: "Identify which runtime signals are observable",
-      note: "Delegated research task completed and handed back to Planner.",
-    },
-    tokens: { total: "18,430", root: "18,430", children: "—" },
-    skills: ["graphify", "product-design:get-context"],
-    plan: null,
-    goal: null,
-    children: [],
-    activity: [
-      { time: "14:31:09", text: "Sent findings to parent session." },
-      { time: "14:29:22", text: "Finished metadata source inventory." },
-    ],
-  },
-  {
-    id: "design-qa",
-    parentSessionId: "dashboard-redesign",
-    name: "Reviewer",
-    role: "Subagent",
-    icon: ShieldCheck,
-    color: "#8fa9ff",
-    session: "design-qa",
-    assignedWork: "Review selected dashboard concept",
-    status: "planning",
-    currentActivity: "Preparing comparison checklist",
-    currentStep: "Reading files",
-    lastActivityAt: "2026-07-25T14:34:03Z",
-    startedAt: "2026-07-25T14:30:59Z",
-    duration: "06:18",
-    started: "Started 14:30:59",
-    currentWork: {
-      id: "CHILD-62C0",
-      title: "Plan reference-to-preview visual QA",
-      note: "This branch has a Plan Task but does not use a Goal.",
-    },
-    tokens: { total: "9,410", root: "9,410", children: "—" },
-    skills: ["product-design:design-qa", "verification-before-completion"],
-    plan: {
-      title: "Visual verification",
-      tasks: [
-        { title: "Define comparison viewport", status: "done" },
-        { title: "Capture implemented preview", status: "waiting" },
-        { title: "Record final QA result", status: "queued" },
-      ],
-    },
-    goal: null,
-    children: [],
-    activity: [
-      { time: "14:34:03", text: "Prepared the desktop reference checklist." },
-      { time: "14:32:46", text: "Waiting for a stable preview URL." },
-    ],
-  },
-  {
-    id: "api-auth",
-    name: "Operator",
-    role: "Root agent",
-    icon: TerminalWindow,
-    color: "#f2bc65",
-    session: "api-auth",
-    assignedWork: "Connect a protected event source",
-    status: "needs_input",
-    currentActivity: "Waiting for API key approval",
-    currentStep: "Waiting",
-    lastActivityAt: "2026-07-25T14:19:31Z",
-    startedAt: "2026-07-25T14:05:50Z",
-    duration: "31:07",
-    started: "Started 14:05:50",
-    currentWork: {
-      id: "TURN-F5B8",
-      title: "Resume the event-source connection after user approval",
-      note: "The session cannot continue without a user-controlled credential.",
-    },
-    tokens: { total: "21,680", root: "21,680", children: "—" },
-    skills: ["openai-platform-api-key"],
-    plan: null,
-    goal: {
-      status: "paused",
-      label: "Paused",
-      title: "Connect the monitor to a protected event stream",
-      detail: "Progress is intentionally paused at the credential boundary.",
-      checkpoint: "Blocked on user action · API key approval requested at 14:19",
-    },
-    children: [],
-    activity: [
-      { time: "14:19:31", text: "Requested secure API key setup." },
-      { time: "14:19:12", text: "Stopped before the credential boundary." },
-    ],
-  },
-  {
-    id: "session-docs",
-    name: "Documenter",
-    role: "Root agent",
-    icon: BracketsCurly,
-    color: "#a6b7c7",
-    session: "session-docs",
-    assignedWork: "Document the session state contract",
-    status: "complete",
-    currentActivity: "Specification written",
-    currentStep: "Complete",
-    lastActivityAt: "2026-07-25T14:24:08Z",
-    startedAt: "2026-07-25T14:11:13Z",
-    duration: "12:55",
-    started: "Completed 14:24:08",
-    currentWork: {
-      id: "TURN-A682",
-      title: "Write a concise session-state reference",
-      note: "A single-request documentation task completed without a plan or goal.",
-    },
-    tokens: { total: "12,140", root: "12,140", children: "—" },
-    skills: ["documents"],
-    plan: null,
-    goal: null,
-    children: [],
-    activity: [
-      { time: "14:24:08", text: "Saved the final session-state reference." },
-      { time: "14:22:51", text: "Verified terminology against the event model." },
-    ],
-  },
-  {
-    id: "architecture",
-    name: "Architect",
-    role: "Root agent",
-    icon: Compass,
-    color: "#c58cf0",
-    session: "architecture",
-    assignedWork: "Define monitor module boundaries",
-    status: "running",
-    currentActivity: "Working toward active Goal",
-    currentStep: "Editing",
-    lastActivityAt: "2026-07-25T14:35:04Z",
-    startedAt: "2026-07-25T13:55:54Z",
-    duration: "42:03",
-    started: "Started 13:55:54",
-    currentWork: {
-      id: "TURN-C440",
-      title: "Align the event model with the dashboard boundary",
-      note: "Goal-driven work with no explicit Plan Task list.",
-    },
-    tokens: { total: "58,070", root: "44,930", children: "13,140" },
-    skills: ["codebase-design", "domain-modeling"],
-    plan: null,
-    goal: {
-      status: "active",
-      label: "Active",
-      title: "Keep runtime ingestion independent from presentation concerns",
-      detail: "The dashboard should consume stable session summaries, not raw provider events.",
-      checkpoint: "Last checkpoint · domain vocabulary stabilized at 14:26",
-    },
-    children: [
-      {
-        id: "domain-model",
-        name: "Modeler",
-        icon: GitBranch,
-        color: "#c58cf0",
-        status: "complete",
-        session: "11:26",
-        tokens: "13.1k",
-        skills: ["domain-modeling"],
-        tasks: null,
-        goal: null,
-        currentStep: "Returned result",
-        lastActivityAt: "2026-07-25T14:26:37Z",
-        work: "Defined Session, Turn, Work Unit, Plan Task and Goal boundaries.",
-      },
-    ],
-    activity: [
-      { time: "14:35:04", text: "Separated session summary from raw events." },
-      { time: "14:26:37", text: "Accepted the domain model handoff." },
-    ],
-  },
-  {
-    id: "nightly-audit",
-    name: "Auditor",
-    role: "Scheduled agent",
-    icon: WarningCircle,
-    color: "#748598",
-    session: "nightly-audit",
-    assignedWork: "Check stale session cleanup",
-    status: "idle",
-    currentActivity: "Scheduled for 02:00 UTC",
-    currentStep: "Waiting",
-    lastActivityAt: "2026-07-25T02:04:12Z",
-    duration: "—",
-    started: "Next run in 11h 23m",
-    currentWork: {
-      id: "SCHEDULE-0200",
-      title: "Run the nightly stale-session audit",
-      note: "Scheduled work exists, but no turn is currently executing.",
-    },
-    tokens: { total: "—", root: "—", children: "—" },
-    skills: ["diagnose"],
-    plan: {
-      title: "Nightly audit",
-      tasks: [
-        { title: "Scan stale sessions", status: "queued" },
-        { title: "Report cleanup candidates", status: "queued" },
-      ],
-    },
-    goal: null,
-    children: [],
-    activity: [
-      { time: "02:04:12", text: "Previous audit finished with no stale sessions." },
-    ],
-  },
-];
-
-const simulationEvents = [
-  {
-    id: "sample-01",
-    sessionId: "dashboard-redesign",
-    occurredAt: "2026-07-25T14:37:04Z",
-    patch: {
-      status: "running",
-      currentActivity: "Reviewing the builder update",
-      currentStep: "Reading files",
-      currentTool: null,
-    },
-    tokens: { total: "113,020", root: "46,260", children: "66,760" },
-    activity: { time: "14:37:04", text: "Opened the builder handoff for review." },
-  },
-  {
-    id: "sample-02",
-    sessionId: "dashboard-redesign",
-    occurredAt: "2026-07-25T14:37:08Z",
-    patch: {
-      currentActivity: "Inspecting the rendered dashboard",
-      currentStep: "Calling tool",
-      currentTool: { name: "browser.snapshot", startedAt: "2026-07-25T14:37:08Z" },
-    },
-    tokens: { total: "113,390", root: "46,510", children: "66,880" },
-    activity: { time: "14:37:08", text: "Called browser.snapshot on the dashboard." },
-  },
-  {
-    id: "sample-03",
-    sessionId: "dashboard-redesign",
-    occurredAt: "2026-07-25T14:37:12Z",
-    patch: {
-      currentActivity: "Integrating the responsive session ledger",
-      currentStep: "Editing",
-      currentTool: null,
-    },
-    tokens: { total: "114,040", root: "46,920", children: "67,120" },
-    tasks: [
-      { title: "Build the responsive session ledger", status: "done" },
-      { title: "Verify child-agent disclosure", status: "active" },
-    ],
-    child: {
-      id: "builder",
-      currentStep: "Editing",
-      lastActivityAt: "2026-07-25T14:37:12Z",
-      work: "Finishing the selected ledger and live state presentation.",
-    },
-    activity: { time: "14:37:12", text: "Merged the responsive ledger update." },
-  },
-  {
-    id: "sample-04",
-    sessionId: "dashboard-redesign",
-    occurredAt: "2026-07-25T14:37:16Z",
-    patch: {
-      currentActivity: "Running interaction checks",
-      currentStep: "Testing",
-      currentTool: { name: "npm test", startedAt: "2026-07-25T14:37:16Z" },
-    },
-    tokens: { total: "114,760", root: "47,390", children: "67,370" },
-    child: {
-      id: "reviewer",
-      status: "running",
-      currentStep: "Testing",
-      lastActivityAt: "2026-07-25T14:37:16Z",
-      work: "Comparing the live dashboard with the approved reference.",
-    },
-    activity: { time: "14:37:16", text: "Started the interaction and visual QA checks." },
-  },
-  {
-    id: "sample-05",
-    sessionId: "dashboard-redesign",
-    occurredAt: "2026-07-25T14:37:20Z",
-    patch: {
-      status: "waiting",
-      currentActivity: "Waiting for the final reviewer result",
-      currentStep: "Waiting",
-      currentTool: null,
-    },
-    tokens: { total: "115,120", root: "47,550", children: "67,570" },
-    child: {
-      id: "builder",
-      status: "complete",
-      currentStep: "Returned result",
-      lastActivityAt: "2026-07-25T14:37:20Z",
-      handoff: true,
-      work: "Returned the completed implementation to the root session.",
-    },
-    activity: { time: "14:37:20", text: "Builder returned the completed implementation." },
-  },
-];
+const EMPTY_SNAPSHOT = {
+  collectedAt: null,
+  lastSuccessfulAt: null,
+  connectionStatus: "syncing",
+  errorCode: null,
+  sessions: [],
+};
 
 function AgentMark({ item, size = 34, active = false, handoff = false }) {
-  const Icon = item.icon ?? Robot;
+  const child = item.parentSessionId != null;
+  const Icon = child ? Robot : Path;
 
   return (
     <span
       className={`agent-mark ${active ? "agent-mark--active" : ""} ${handoff ? "agent-mark--handoff" : ""}`}
-      style={{ "--agent-color": item.color, width: size, height: size }}
+      style={{
+        "--agent-color": child ? "#8fa9ff" : "#5ed6c6",
+        width: size,
+        height: size,
+      }}
       aria-hidden="true"
     >
       <Icon size={size * 0.52} weight="regular" />
@@ -569,7 +138,7 @@ function MetaValue({ label, children, accent = false, updated = false }) {
   );
 }
 
-function SessionRow({ session, selected, onSelect, clock }) {
+function SessionRow({ session, selected, onSelect, clock, changes, collectedAt }) {
   const metrics = getSessionMetrics(session);
   const status = normalizeStatus(session.status);
   const relativeTime = getRelativeTime(session.lastActivityAt, new Date(clock));
@@ -588,21 +157,24 @@ function SessionRow({ session, selected, onSelect, clock }) {
       <span role="cell" className="session-agent">
         <AgentMark item={session} />
         <span>
-          <strong>{session.name}</strong>
-          <small>{session.role}</small>
+          <strong>Codex</strong>
+          <small>Root agent</small>
         </span>
       </span>
       <span role="cell" className="session-assignment">
         <strong>{session.session}</strong>
-        <small>{session.assignedWork}</small>
+        <small>{session.assignedWork || "No assigned work"}</small>
       </span>
       <span role="cell" className="session-state">
         <StatusBadge status={session.status} />
-        <small>{session.currentActivity}{relativeTime ? ` · ${relativeTime}` : ""}</small>
+        <small>
+          {session.currentActivity?.label ?? "No active tool"}
+          {relativeTime ? ` · ${relativeTime}` : ""}
+        </small>
       </span>
       <span role="cell" className="session-time">
-        <strong>{session.duration}</strong>
-        <small>{session.started}</small>
+        <strong>{formatDuration(session.durationSeconds)}</strong>
+        <small>Started {formatUtcTime(session.startedAt)}</small>
       </span>
       <span role="cell">
         <MetaValue label="Skills">{metrics.skills || "—"}</MetaValue>
@@ -614,14 +186,15 @@ function SessionRow({ session, selected, onSelect, clock }) {
       </span>
       <span role="cell">
         <MetaValue label="Goal" accent={metrics.goalStatus === "active"}>
-          {session.goal?.label ?? "—"}
+          {formatGoalStatus(session.goal?.status)}
         </MetaValue>
       </span>
       <span role="cell" className="session-subagents">
         <MetaValue
+          key={changes.childIds.length ? `children-${collectedAt}` : "children"}
           label="Subagents"
           accent={metrics.subagents.active > 0}
-          updated={Boolean(session.lastEvent?.childId)}
+          updated={changes.childIds.length > 0}
         >
           {metrics.subagents.total
             ? `${metrics.subagents.active}/${metrics.subagents.total}`
@@ -633,21 +206,21 @@ function SessionRow({ session, selected, onSelect, clock }) {
   );
 }
 
-function TaskList({ plan, eventId, changedTasks = [] }) {
-  if (!plan) {
+function TaskList({ plan, collectedAt, changedTasks = [] }) {
+  if (!plan?.tasks?.length) {
     return <p className="empty-copy">This session has no Plan Task list.</p>;
   }
 
   return (
     <ol className="task-list">
       {plan.tasks.map((task) => {
-        const meta = taskStatusMeta[task.status];
+        const meta = taskStatusMeta[task.status] ?? taskStatusMeta.queued;
         const Icon = meta.icon;
         const changed = changedTasks.includes(task.title);
 
         return (
           <li
-            key={changed ? `${task.title}-${eventId}` : task.title}
+            key={changed ? `${task.title}-${collectedAt}` : task.title}
             className={`task-item task-item--${task.status} ${changed ? "task-item--updated" : ""}`}
           >
             <span className="task-icon">
@@ -664,7 +237,14 @@ function TaskList({ plan, eventId, changedTasks = [] }) {
   );
 }
 
-function ChildAgents({ children, selectedChildId, onSelect, clock }) {
+function ChildAgents({
+  children,
+  selectedChildId,
+  onSelect,
+  clock,
+  changes,
+  collectedAt,
+}) {
   if (!children.length) {
     return <p className="empty-copy">No subagents were created for this session.</p>;
   }
@@ -688,13 +268,16 @@ function ChildAgents({ children, selectedChildId, onSelect, clock }) {
           const isSelected = selectedChildId === child.id;
           const childStatus = normalizeStatus(child.status);
           const relativeTime = getRelativeTime(child.lastActivityAt, new Date(clock));
+          const progress = getPlanProgress(child.plan);
+          const changed = changes.childIds.includes(child.id);
+          const handoff = changes.handoffChildIds.includes(child.id) && childStatus === "complete";
 
           return (
             <button
               type="button"
-              className={`child-row ${isSelected ? "child-row--selected" : ""} ${child.handoff ? "child-row--handoff" : ""}`}
+              className={`child-row ${isSelected ? "child-row--selected" : ""} ${handoff ? "child-row--handoff" : ""}`}
               role="row"
-              key={child.id}
+              key={changed ? `${child.id}-${collectedAt}` : child.id}
               onClick={() => onSelect(isSelected ? null : child.id)}
               aria-expanded={isSelected}
             >
@@ -703,21 +286,27 @@ function ChildAgents({ children, selectedChildId, onSelect, clock }) {
                   item={child}
                   size={26}
                   active={childStatus === "running"}
-                  handoff={child.handoff}
+                  handoff={handoff}
                 />
                 <span>
-                  <strong>{child.name}</strong>
-                  <small>{child.currentStep ?? "Waiting"}{relativeTime ? ` · ${relativeTime}` : ""}</small>
+                  <strong>{child.agentNickname ?? child.threadId.slice(0, 8)}</strong>
+                  <small>
+                    {child.agentRole ?? "Child agent"}
+                    {relativeTime ? ` · ${relativeTime}` : ""}
+                  </small>
                 </span>
               </span>
               <span role="cell"><StatusBadge status={child.status} /></span>
-              <span role="cell">{child.session}</span>
-              <span role="cell">{child.tokens}</span>
-              <span role="cell">{child.skills.length}</span>
-              <span role="cell">
-                {child.tasks ? `${child.tasks.completed}/${child.tasks.total}` : "—"}
+              <span role="cell" className="child-session">
+                <strong>{child.currentWork?.title || "No current work"}</strong>
+                <small>{child.currentActivity?.step ?? child.currentActivity?.label ?? "—"}</small>
               </span>
-              <span role="cell">{child.goal?.label ?? "—"}</span>
+              <span role="cell">{formatTokenCount(child.tokens)}</span>
+              <span role="cell">{child.skills?.length || "—"}</span>
+              <span role="cell">
+                {progress.total ? `${progress.completed}/${progress.total}` : "—"}
+              </span>
+              <span role="cell">{formatGoalStatus(child.goal?.status)}</span>
               <span role="cell">
                 {isSelected ? <CaretDown size={14} /> : <CaretRight size={14} />}
               </span>
@@ -729,11 +318,11 @@ function ChildAgents({ children, selectedChildId, onSelect, clock }) {
         <div className="child-inspector" aria-live="polite">
           <div>
             <small>Current work</small>
-            <strong>{selectedChild.work}</strong>
+            <strong>{selectedChild.currentWork?.title || "No current work"}</strong>
           </div>
           <div>
             <small>Skills in use</small>
-            <span>{selectedChild.skills.join(" · ")}</span>
+            <span>{selectedChild.skills?.join(" · ") || "No skills observed"}</span>
           </div>
         </div>
       )}
@@ -749,18 +338,19 @@ const liveStepIcons = {
   Waiting: HourglassMedium,
 };
 
-function LiveStep({ session, clock }) {
-  const toolStartedAt = Date.parse(session.currentTool?.startedAt);
+function LiveStep({ session, clock, collectedAt }) {
+  const activity = session.currentActivity;
+  const toolStartedAt = Date.parse(activity?.startedAt);
   const toolElapsed = Number.isNaN(toolStartedAt)
     ? null
     : Math.max(0, Math.floor((clock - toolStartedAt) / 1000));
 
   return (
     <div className="live-step">
-      <ol aria-label={`Current execution step: ${session.currentStep ?? "Unavailable"}`}>
+      <ol aria-label={`Current execution step: ${activity?.step ?? "Unavailable"}`}>
         {liveSteps.map((step) => {
           const Icon = liveStepIcons[step];
-          const active = session.currentStep === step;
+          const active = activity?.step === step;
 
           return (
             <li key={step} className={active ? "live-step--active" : ""} aria-current={active ? "step" : undefined}>
@@ -770,21 +360,29 @@ function LiveStep({ session, clock }) {
           );
         })}
       </ol>
-      {session.currentTool && (
-        <div className="live-tool" key={`${session.eventId}-${session.currentTool.name}`}>
+      {activity && (
+        <div className="live-tool" key={`${collectedAt}-${activity.label}`}>
           <TerminalWindow size={13} />
-          <code>{session.currentTool.name}</code>
-          <time>{toolElapsed}s</time>
+          <code>{activity.label}</code>
+          <time>{toolElapsed == null ? "—" : `${toolElapsed}s`}</time>
         </div>
       )}
     </div>
   );
 }
 
-function SessionDetail({ session, selectedChildId, onSelectChild, onOpenCodex, clock }) {
+function SessionDetail({
+  session,
+  selectedChildId,
+  onSelectChild,
+  onOpenCodex,
+  clock,
+  changes,
+  collectedAt,
+}) {
   const progress = getPlanProgress(session.plan);
   const relativeTime = getRelativeTime(session.lastActivityAt, new Date(clock));
-  const changedTokenKeys = session.lastEvent?.tokenKeys ?? [];
+  const changedTokenKeys = changes.tokenKeys;
 
   return (
     <section className="session-detail" id="session-detail" aria-live="polite">
@@ -793,12 +391,12 @@ function SessionDetail({ session, selectedChildId, onSelectChild, onOpenCodex, c
           <AgentMark item={session} size={42} />
           <div>
             <p>Selected session</p>
-            <h2>{session.name} <span>/</span> {session.session}</h2>
+            <h2>Codex <span>/</span> {session.session}</h2>
           </div>
         </div>
         <div className="detail-meta">
           <StatusBadge status={session.status} />
-          <span>{session.duration} session</span>
+          <span>{formatDuration(session.durationSeconds)} session</span>
           <span>Last update {relativeTime || "unavailable"}</span>
           <button type="button" onClick={onOpenCodex}>
             <ArrowSquareOut size={14} />
@@ -812,14 +410,17 @@ function SessionDetail({ session, selectedChildId, onSelectChild, onOpenCodex, c
           <article className="detail-card current-work-card">
             <header className="card-header">
               <span><Pulse size={16} /> Current work</span>
-              <code>{session.currentWork.id}</code>
+              <code>{session.currentWork?.turnId ?? "No active turn"}</code>
             </header>
-            <h3>{session.currentWork.title}</h3>
-            <p>{session.currentWork.note}</p>
-            <LiveStep session={session} clock={clock} />
+            {session.currentWork ? (
+              <h3>{session.currentWork.title || "No current work"}</h3>
+            ) : (
+              <p className="empty-copy">No active Turn was observed.</p>
+            )}
+            <LiveStep session={session} clock={clock} collectedAt={collectedAt} />
             <div className="work-state">
               <StatusBadge status={session.status} />
-              <small>{session.currentActivity}</small>
+              <small>{session.currentActivity?.label ?? "No active tool"}</small>
             </div>
           </article>
 
@@ -828,44 +429,32 @@ function SessionDetail({ session, selectedChildId, onSelectChild, onOpenCodex, c
               <span><TerminalWindow size={16} /> Token usage</span>
             </header>
             <dl className="token-list">
-              <div>
-                <dt>Total</dt>
-                <dd
-                  key={`total-${session.eventId}`}
-                  className={changedTokenKeys.includes("total") ? "value-updated" : ""}
-                >
-                  {session.tokens.total}
-                </dd>
-              </div>
-              <div>
-                <dt>Root agent</dt>
-                <dd
-                  key={`root-${session.eventId}`}
-                  className={changedTokenKeys.includes("root") ? "value-updated" : ""}
-                >
-                  {session.tokens.root}
-                </dd>
-              </div>
-              <div>
-                <dt>Child agents</dt>
-                <dd
-                  key={`children-${session.eventId}`}
-                  className={changedTokenKeys.includes("children") ? "value-updated" : ""}
-                >
-                  {session.tokens.children}
-                </dd>
-              </div>
+              {["total", "root", "children"].map((key) => (
+                <div key={key}>
+                  <dt>{key === "total" ? "Total" : key === "root" ? "Root agent" : "Child agents"}</dt>
+                  <dd
+                    key={changedTokenKeys.includes(key) ? `${key}-${collectedAt}` : key}
+                    className={changedTokenKeys.includes(key) ? "value-updated" : ""}
+                  >
+                    {formatTokenCount(session.tokens?.[key])}
+                  </dd>
+                </div>
+              ))}
             </dl>
           </article>
 
           <article className="detail-card">
             <header className="card-header">
               <span><BracketsCurly size={16} /> Applied skills</span>
-              <b>{session.skills.length}</b>
+              <b>{session.skills?.length ?? 0}</b>
             </header>
-            <ul className="skill-chips">
-              {session.skills.map((skill) => <li key={skill}>{skill}</li>)}
-            </ul>
+            {session.skills?.length ? (
+              <ul className="skill-chips">
+                {session.skills.map((skill) => <li key={skill}>{skill}</li>)}
+              </ul>
+            ) : (
+              <p className="empty-copy">No skills were observed for this Turn.</p>
+            )}
           </article>
         </div>
 
@@ -875,24 +464,27 @@ function SessionDetail({ session, selectedChildId, onSelectChild, onOpenCodex, c
               <span><CheckCircle size={16} /> Tasks</span>
               <b>{progress.total ? `${progress.completed}/${progress.total}` : "Not used"}</b>
             </header>
-            {session.plan && <h3>{session.plan.title}</h3>}
             <TaskList
               plan={session.plan}
-              eventId={session.eventId}
-              changedTasks={session.lastEvent?.taskTitles}
+              collectedAt={collectedAt}
+              changedTasks={changes.taskTitles}
             />
           </article>
 
           <article className={`detail-card goal-card ${session.goal ? "" : "goal-card--empty"}`}>
             <header className="card-header">
               <span><Target size={16} /> Goal</span>
-              <b>{session.goal?.label ?? "Not used"}</b>
+              <b>{session.goal ? formatGoalStatus(session.goal.status) : "Not used"}</b>
             </header>
             {session.goal ? (
               <>
-                <h3>{session.goal.title}</h3>
-                <p>{session.goal.detail}</p>
-                <small>{session.goal.checkpoint}</small>
+                <h3>{session.goal.objective}</h3>
+                <p>
+                  Tokens {formatTokenCount(session.goal.tokensUsed)}
+                  {" / "}
+                  {formatTokenCount(session.goal.tokenBudget)}
+                </p>
+                <small>Time used · {formatDuration(session.goal.timeUsedSeconds)}</small>
               </>
             ) : (
               <p className="empty-copy">This session is not operating under a Goal.</p>
@@ -904,13 +496,15 @@ function SessionDetail({ session, selectedChildId, onSelectChild, onOpenCodex, c
           <article className="detail-card child-card">
             <header className="card-header">
               <span><GitBranch size={16} /> Child agents</span>
-              <b>{session.children.length}</b>
+              <b>{session.children?.length ?? 0}</b>
             </header>
             <ChildAgents
-              children={session.children}
+              children={session.children ?? []}
               selectedChildId={selectedChildId}
               onSelect={onSelectChild}
               clock={clock}
+              changes={changes}
+              collectedAt={collectedAt}
             />
           </article>
 
@@ -919,19 +513,22 @@ function SessionDetail({ session, selectedChildId, onSelectChild, onOpenCodex, c
               <span><Pulse size={16} /> Recent activity</span>
               <b>UTC</b>
             </header>
-            <ol className="activity-list">
-              {session.activity.map((event, index) => (
-                <li
-                  key={index === 0 && session.lastEvent?.activity
-                    ? `${session.eventId}-${event.time}-${event.text}`
-                    : `${event.time}-${event.text}`}
-                  className={index === 0 && session.lastEvent?.activity ? "activity-item--updated" : ""}
-                >
-                  <time>{event.time}</time>
-                  <span>{event.text}</span>
-                </li>
-              ))}
-            </ol>
+            {session.activity?.length ? (
+              <ol className="activity-list">
+                {session.activity.map((activity) => (
+                  <li
+                    key={activity.id}
+                    data-kind={activity.kind}
+                    className={changes.activityIds.includes(activity.id) ? "activity-item--updated" : ""}
+                  >
+                    <time>{formatUtcTime(activity.at)}</time>
+                    <span>{activity.label}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="empty-copy">No recent tool activity was observed.</p>
+            )}
           </article>
         </div>
       </div>
@@ -940,24 +537,38 @@ function SessionDetail({ session, selectedChildId, onSelectChild, onOpenCodex, c
 }
 
 export function App() {
-  const [snapshot, setSnapshot] = useState(sessions);
-  const [selectedSessionId, setSelectedSessionId] = useState(sessions[0].id);
+  const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
+  const [feedStatus, setFeedStatus] = useState({
+    connectionStatus: "syncing",
+    lastSuccessfulAt: null,
+  });
+  const [changes, setChanges] = useState({});
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [selectedChildId, setSelectedChildId] = useState(null);
-  const [showDemoNotice, setShowDemoNotice] = useState(false);
   const [selectionNotice, setSelectionNotice] = useState("");
   const [sortState, setSortState] = useState({ key: "operational", direction: "asc" });
   const [isLive, setIsLive] = useState(true);
-  const [eventIndex, setEventIndex] = useState(0);
-  const [clock, setClock] = useState(demoStartedAt);
-  const [lastAppliedEvent, setLastAppliedEvent] = useState(null);
+  const [clock, setClock] = useState(Date.now());
+  const latestSnapshot = useRef(EMPTY_SNAPSHOT);
+  const appliedSnapshot = useRef(EMPTY_SNAPSHOT);
+  const isLiveRef = useRef(true);
   const ledgerRef = useRef(null);
   const previousRects = useRef(new Map());
 
+  const applySnapshot = useCallback((next) => {
+    setChanges(getSnapshotChanges(appliedSnapshot.current, next));
+    appliedSnapshot.current = next;
+    setSnapshot(next);
+    setClock(Date.now());
+  }, []);
+
   const visibleSessions = useMemo(
-    () => sortSessions(getVisibleSessions(snapshot), sortState),
-    [snapshot, sortState],
+    () => sortSessions(getVisibleSessions(snapshot.sessions), sortState),
+    [snapshot.sessions, sortState],
   );
-  const selectedSession = snapshot.find((session) => session.id === selectedSessionId);
+  const selectedSession = snapshot.sessions.find(
+    (session) => session.id === selectedSessionId,
+  );
 
   const runningCount = useMemo(
     () => visibleSessions.filter((session) => normalizeStatus(session.status) === "running").length,
@@ -971,29 +582,50 @@ export function App() {
   );
 
   useEffect(() => {
+    let cancelled = false;
+    let timer;
+
+    const poll = async () => {
+      try {
+        const response = await fetch("/api/snapshot", { cache: "no-store" });
+        if (!response.ok) throw new Error("Snapshot request failed");
+        const next = await response.json();
+        if (cancelled) return;
+        latestSnapshot.current = next;
+        setFeedStatus({
+          connectionStatus: next.connectionStatus,
+          lastSuccessfulAt: next.lastSuccessfulAt,
+        });
+        if (isLiveRef.current) applySnapshot(next);
+      } catch {
+        if (!cancelled) {
+          setFeedStatus((current) => ({ ...current, connectionStatus: "error" }));
+        }
+      } finally {
+        if (!cancelled) timer = window.setTimeout(poll, 3000);
+      }
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [applySnapshot]);
+
+  useEffect(() => {
     if (!isLive) return undefined;
-    const timer = window.setInterval(() => setClock((value) => value + 1000), 1000);
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [isLive]);
 
   useEffect(() => {
-    if (!isLive || eventIndex >= simulationEvents.length) return undefined;
-
-    const timer = window.setTimeout(() => {
-      const event = simulationEvents[eventIndex];
-      setSnapshot((current) => applySimulationEvent(current, event));
-      setLastAppliedEvent({ id: event.id, sessionId: event.sessionId });
-      setEventIndex((index) => index + 1);
-    }, 4000);
-
-    return () => window.clearTimeout(timer);
-  }, [eventIndex, isLive]);
-
-  useEffect(() => {
     if (visibleSessions.some((session) => session.id === selectedSessionId)) return;
+    if (selectedSessionId) {
+      setSelectionNotice("The selected session is no longer in the current server snapshot.");
+    }
     setSelectedSessionId(visibleSessions[0]?.id ?? null);
     setSelectedChildId(null);
-    setSelectionNotice("The selected session is no longer in the current server snapshot.");
   }, [selectedSessionId, visibleSessions]);
 
   useEffect(() => {
@@ -1020,28 +652,48 @@ export function App() {
         const next = nextRects.get(row.dataset.sessionId);
         const offset = previous && next ? previous.top - next.top : 0;
         if (offset) {
-          gsap.fromTo(row, { y: offset }, { y: 0, duration: 0.38, ease: "power2.out", clearProps: "transform" });
+          gsap.fromTo(row, { y: offset }, {
+            y: 0,
+            duration: 0.38,
+            ease: "power2.out",
+            clearProps: "transform",
+          });
         }
       });
 
-      const changedRow = lastAppliedEvent
-        ? ledgerRef.current?.querySelector(`[data-session-id="${lastAppliedEvent.sessionId}"]`)
+      const changedSessionId = visibleSessions.find((session) => (
+        Object.values(changes[session.id] ?? {}).some((items) => items.length)
+      ))?.id;
+      const changedRow = changedSessionId
+        ? ledgerRef.current?.querySelector(`[data-session-id="${changedSessionId}"]`)
         : null;
       if (changedRow) {
         gsap.fromTo(
           changedRow,
           { backgroundColor: "rgba(94, 214, 198, 0.16)" },
-          { backgroundColor: "transparent", duration: 1.1, ease: "power2.out", clearProps: "backgroundColor" },
+          {
+            backgroundColor: "transparent",
+            duration: 1.1,
+            ease: "power2.out",
+            clearProps: "backgroundColor",
+          },
         );
       }
     }
 
     previousRects.current = nextRects;
-  }, [lastAppliedEvent, visibleSessions]);
+  }, [changes, snapshot.collectedAt, visibleSessions]);
 
   const selectSession = (id) => {
     setSelectedSessionId(id);
     setSelectedChildId(null);
+  };
+
+  const toggleLive = () => {
+    const next = !isLiveRef.current;
+    isLiveRef.current = next;
+    setIsLive(next);
+    if (next) applySnapshot(latestSnapshot.current);
   };
 
   const updateSort = (column) => {
@@ -1055,6 +707,24 @@ export function App() {
   const sortLabel = sortState.key === "operational"
     ? "Operational order"
     : `${sortColumns.find((column) => column.key === sortState.key)?.label} · ${sortState.direction}`;
+  const connectionStatus = ["connected", "syncing", "error"].includes(
+    feedStatus.connectionStatus,
+  )
+    ? feedStatus.connectionStatus
+    : "error";
+  const connectionLabel = {
+    connected: "Connected",
+    syncing: "Syncing",
+    error: "Error",
+  }[connectionStatus];
+  const feedAge = getRelativeTime(feedStatus.lastSuccessfulAt, new Date());
+  const emptyChanges = {
+    tokenKeys: [],
+    taskTitles: [],
+    childIds: [],
+    handoffChildIds: [],
+    activityIds: [],
+  };
 
   return (
     <main className="app-shell">
@@ -1071,7 +741,7 @@ export function App() {
           <span><i className={`live-dot ${isLive ? "" : "live-dot--paused"}`} /> {runningCount} running</span>
           <span>{waitingCount} waiting</span>
           <span>{visibleSessions.length} sessions</span>
-          <time>Sat, Jul 25 · {new Date(clock).toISOString().slice(11, 16)} UTC</time>
+          <time>{formatUtcTime(new Date(clock).toISOString())} UTC</time>
         </div>
       </header>
 
@@ -1086,7 +756,7 @@ export function App() {
               <button
                 type="button"
                 className={`live-toggle ${isLive ? "live-toggle--active" : ""}`}
-                onClick={() => setIsLive((value) => !value)}
+                onClick={toggleLive}
                 aria-pressed={isLive}
               >
                 {isLive ? <Pulse size={12} /> : <PauseCircle size={12} />}
@@ -1100,8 +770,8 @@ export function App() {
                 <ArrowsDownUp size={12} />
                 {sortLabel}
               </button>
-              <small>
-                Demo mode · {eventIndex >= simulationEvents.length ? "caught up" : "snapshot updating"}
+              <small className={`connection-state--${connectionStatus}`}>
+                {connectionLabel} · {feedAge || "waiting for first snapshot"}
               </small>
             </div>
           </header>
@@ -1148,6 +818,8 @@ export function App() {
                     selected={session.id === selectedSessionId}
                     onSelect={selectSession}
                     clock={clock}
+                    changes={changes[session.id] ?? emptyChanges}
+                    collectedAt={snapshot.collectedAt}
                   />
                 ))}
                 {!visibleSessions.length && (
@@ -1163,28 +835,23 @@ export function App() {
             session={selectedSession}
             selectedChildId={selectedChildId}
             onSelectChild={setSelectedChildId}
-            onOpenCodex={() => setShowDemoNotice(true)}
+            onOpenCodex={() => {
+              window.location.href = "codex://threads/" + selectedSession.threadId;
+            }}
             clock={clock}
+            changes={changes[selectedSession.id] ?? emptyChanges}
+            collectedAt={snapshot.collectedAt}
           />
         )}
       </div>
 
       <footer className="page-footer">
-        <span>Demo mode · simulated Codex App Server snapshot</span>
+        <span className={`connection-state--${connectionStatus}`}>
+          {connectionLabel} · local Codex snapshot
+        </span>
         <span>Session event time shown in UTC</span>
       </footer>
 
-      {showDemoNotice && (
-        <button
-          type="button"
-          className="app-toast"
-          onClick={() => setShowDemoNotice(false)}
-          aria-live="polite"
-        >
-          <span>Demo mode is using a simulated Codex App Server snapshot.</span>
-          <small>Dismiss</small>
-        </button>
-      )}
       {selectionNotice && (
         <button
           type="button"

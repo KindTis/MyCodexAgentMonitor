@@ -102,7 +102,7 @@ function sortValue(session, key) {
 
   switch (key) {
     case "agent":
-      return session.name;
+      return session.agentNickname ?? "Codex";
     case "session":
       return `${session.session ?? ""} ${session.assignedWork ?? ""}`.trim() || null;
     case "status":
@@ -249,44 +249,4 @@ export function getRowScrollTop({ rowIndex, rowHeight, viewportHeight, scrollTop
   if (rowTop < scrollTop) return rowTop;
   if (rowBottom > scrollTop + viewportHeight) return rowBottom - viewportHeight;
   return scrollTop;
-}
-
-export function applySimulationEvent(sessions, event) {
-  return sessions.map((session) => {
-    if ((session.id ?? session.sessionId) !== event.sessionId) return session;
-
-    const taskStates = new Map((event.tasks ?? []).map((task) => [task.title, task.status]));
-    const nextPlan = session.plan && taskStates.size
-      ? {
-          ...session.plan,
-          tasks: session.plan.tasks.map((task) => (
-            taskStates.has(task.title) ? { ...task, status: taskStates.get(task.title) } : task
-          )),
-        }
-      : session.plan;
-    const nextChildren = event.child
-      ? (session.children ?? []).map((child) => (
-          child.id === event.child.id ? { ...child, ...event.child } : child
-        ))
-      : session.children;
-
-    return {
-      ...session,
-      ...event.patch,
-      eventId: event.id,
-      lastEvent: {
-        tokenKeys: Object.keys(event.tokens ?? {}),
-        taskTitles: [...taskStates.keys()],
-        childId: event.child?.id ?? null,
-        activity: Boolean(event.activity),
-      },
-      lastActivityAt: event.occurredAt ?? session.lastActivityAt,
-      tokens: event.tokens ? { ...session.tokens, ...event.tokens } : session.tokens,
-      plan: nextPlan,
-      children: nextChildren,
-      activity: event.activity
-        ? [event.activity, ...(session.activity ?? [])].slice(0, 4)
-        : session.activity,
-    };
-  });
 }

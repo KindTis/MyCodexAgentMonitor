@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  applySimulationEvent,
   formatDuration,
   formatGoalStatus,
   formatTokenCount,
@@ -215,38 +214,6 @@ test("column sorting keeps missing values last in both directions", () => {
     sortSessions(input, { key: "tasks", direction: "asc" }).map((session) => session.id),
     ["few", "many", "none"],
   );
-});
-
-test("a deterministic event updates related snapshot fields without mutating the source", () => {
-  const input = [
-    {
-      id: "builder",
-      status: "running",
-      tokens: { total: "1,000", root: "1,000", children: "—" },
-      plan: { tasks: [{ title: "Edit", status: "active" }, { title: "Test", status: "queued" }] },
-      children: [{ id: "qa", status: "waiting", currentStep: "Waiting" }],
-      activity: [{ time: "14:00:00", text: "Started." }],
-    },
-  ];
-
-  const output = applySimulationEvent(input, {
-    id: "event-1",
-    sessionId: "builder",
-    patch: { currentActivity: "Running tests", currentStep: "Testing" },
-    tokens: { total: "1,240", root: "1,240" },
-    tasks: [
-      { title: "Edit", status: "done" },
-      { title: "Test", status: "active" },
-    ],
-    child: { id: "qa", status: "complete", currentStep: "Returned result", handoff: true },
-    activity: { time: "14:00:03", text: "Started the verification suite." },
-  });
-
-  assert.equal(output[0].currentStep, "Testing");
-  assert.equal(output[0].plan.tasks[0].status, "done");
-  assert.equal(output[0].children[0].handoff, true);
-  assert.equal(output[0].activity[0].time, "14:00:03");
-  assert.equal(input[0].plan.tasks[0].status, "active");
 });
 
 test("formats relative snapshot age without inventing precision", () => {
