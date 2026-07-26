@@ -117,7 +117,15 @@ function createFakeCatalog(initialThreads = []) {
   };
 }
 
-function createStoreHarness({ threads, initialRecords = {}, startedAt }) {
+function createStoreHarness({
+  threads,
+  initialRecords = {},
+  startedAt,
+  readRepoMetadata = async (cwd) => ({
+    projectName: path.win32.basename(cwd),
+    gitBranch: "main",
+  }),
+}) {
   let nowMs = Date.parse(startedAt);
   let records = new Map(
     Object.entries(initialRecords).map(([threadId, items]) => [
@@ -156,6 +164,7 @@ function createStoreHarness({ threads, initialRecords = {}, startedAt }) {
     tailer,
     codexHome: "C:\\Users\\dev\\.codex",
     now: () => nowMs,
+    readRepoMetadata,
   });
 
   return {
@@ -181,6 +190,35 @@ function createStoreHarness({ threads, initialRecords = {}, startedAt }) {
     },
   };
 }
+
+test("root session에 cwd의 project name과 현재 git branch를 노출한다", async () => {
+  const metadataCalls = [];
+  const harness = createStoreHarness({
+    threads: [thread("active-root", {
+      cwd: "C:\\Users\\dev\\Repos\\AgentMonitor",
+      updatedAt: unix("2026-07-26T05:59:30Z"),
+    })],
+    startedAt: "2026-07-26T06:00:00Z",
+    initialRecords: {
+      "active-root": [sessionEvent("2026-07-26T05:59:30Z", "task_started", {
+        turn_id: "active-root-turn",
+      })],
+    },
+    readRepoMetadata: async (cwd) => {
+      metadataCalls.push(cwd);
+      return {
+        projectName: "AgentMonitor",
+        gitBranch: "feature/session-labels",
+      };
+    },
+  });
+
+  const snapshot = await harness.store.initialize();
+
+  assert.equal(snapshot.sessions[0].projectName, "AgentMonitor");
+  assert.equal(snapshot.sessions[0].gitBranch, "feature/session-labels");
+  assert.deepEqual(metadataCalls, ["C:\\Users\\dev\\Repos\\AgentMonitor"]);
+});
 
 test("시작 시 최근 미완료 루트 source만 등록하고 child는 부모 상세에 둔다", async () => {
   const threads = [
@@ -219,9 +257,21 @@ test("시작 시 최근 미완료 루트 source만 등록하고 child는 부모 
           turn_id: "complete-before-start-turn",
         }),
       ],
-      "child-a": [sessionEvent("2026-07-26T05:59:40Z", "task_started", {
-        turn_id: "child-a-turn",
-      })],
+      "child-a": [
+        sessionEvent("2026-07-26T05:59:40Z", "task_started", {
+          turn_id: "child-a-turn",
+        }),
+        {
+          timestamp: "2026-07-26T05:59:41Z",
+          type: "response_item",
+          payload: {
+            type: "function_call",
+            name: "read_file",
+            arguments: '{"path":"src/App.jsx"}',
+            call_id: "child-read",
+          },
+        },
+      ],
     },
   });
 
@@ -233,6 +283,7 @@ test("시작 시 최근 미완료 루트 source만 등록하고 child는 부모 
   const activeRoot = snapshot.sessions.find(({ id }) => id === "active-root");
   assert.equal(activeRoot.isWorking, true);
   assert.equal(activeRoot.children[0].isWorking, true);
+  assert.deepEqual(activeRoot.children[0].activity.map(({ id }) => id), ["child-read"]);
   assert.deepEqual(activeRoot.children.map(({ id }) => id), [
     "child-a",
   ]);

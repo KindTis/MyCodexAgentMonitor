@@ -1,7 +1,13 @@
+import { execFile } from "node:child_process";
+import path from "node:path";
+import { promisify } from "node:util";
+
 import {
   IDLE_AFTER_MS,
   reduceThreadRecords,
 } from "./session-log.mjs";
+
+const execFileAsync = promisify(execFile);
 
 export const COLLECTION_INTERVAL_MS = 3000;
 export const THREAD_PAGE_SIZE = 100;
@@ -33,11 +39,18 @@ export class SnapshotStore {
     sessions: [],
   };
 
-  constructor({ appServer, tailer, codexHome, now = Date.now }) {
+  constructor({
+    appServer,
+    tailer,
+    codexHome,
+    now = Date.now,
+    readRepoMetadata = getRepoMetadata,
+  }) {
     this.appServer = appServer;
     this.tailer = tailer;
     this.codexHome = codexHome;
     this.now = now;
+    this.readRepoMetadata = readRepoMetadata;
     this.monitorStartedAt = now();
   }
 
@@ -141,6 +154,14 @@ export class SnapshotStore {
       }
 
       const collectedAt = new Date(nowMs).toISOString();
+      const cwdList = [...new Set(
+        [...registeredRoots]
+          .map((rootId) => threads.get(rootId)?.cwd)
+          .filter(Boolean),
+      )];
+      const repoMetadata = new Map(await Promise.all(
+        cwdList.map(async (cwd) => [cwd, await this.readRepoMetadata(cwd)]),
+      ));
       const snapshot = {
         collectedAt,
         lastSuccessfulAt: collectedAt,
@@ -152,6 +173,7 @@ export class SnapshotStore {
           observations,
           threads,
           goals,
+          repoMetadata,
         }),
       };
 
@@ -248,6 +270,7 @@ function buildSessions({
   observations,
   threads,
   goals,
+  repoMetadata,
 }) {
   return [...registeredRoots]
     .map((rootId) => {
@@ -266,12 +289,15 @@ function buildSessions({
 
       const rootTokens = observation.tokens ?? 0;
       const childTokens = childItems.reduce((sum, child) => sum + child.tokens, 0);
+      const metadata = repoMetadata.get(root.cwd);
       return {
         id: root.id,
         parentSessionId: null,
         threadId: root.id,
         session: root.name ?? root.id.slice(0, 8),
         cwd: root.cwd,
+        projectName: metadata?.projectName ?? "Unknown project",
+        gitBranch: metadata?.gitBranch ?? "No Git branch",
         assignedWork: observation.assignedWork,
         status: observation.status,
         isWorking: observation.isWorking,
@@ -300,6 +326,24 @@ function buildSessions({
     ));
 }
 
+async function getRepoMetadata(cwd) {
+  const projectName = path.basename(path.resolve(cwd)) || "Unknown project";
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"],
+      { timeout: 2000, windowsHide: true },
+    );
+    const branch = stdout.trim();
+    return {
+      projectName,
+      gitBranch: branch === "HEAD" ? "Detached HEAD" : branch || "No Git branch",
+    };
+  } catch {
+    return { projectName, gitBranch: "No Git branch" };
+  }
+}
+
 function buildChild(thread, observation, goal, rootId) {
   if (!thread || !observation) return null;
   return {
@@ -320,6 +364,7 @@ function buildChild(thread, observation, goal, rootId) {
     plan: cloneOrNull(observation.plan),
     goal: normalizeGoal(goal),
     currentWork: buildCurrentWork(observation),
+    activity: structuredClone(observation.activity),
   };
 }
 
