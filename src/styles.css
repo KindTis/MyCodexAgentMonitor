@@ -158,6 +158,14 @@ time,
   white-space: nowrap;
 }
 
+.system-summary-value {
+  display: inline-block;
+}
+
+.system-summary-value--updated {
+  animation: value-flash 1500ms ease-out 1;
+}
+
 .live-dot,
 .feed-state i {
   display: inline-block;
@@ -1530,6 +1538,7 @@ time,
   .session-row--attention,
   .metric-value--updated strong,
   .value-updated,
+  .system-summary-value--updated,
   .agent-mark--active,
   .agent-mark--handoff,
   .live-step--active svg,

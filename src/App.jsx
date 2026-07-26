@@ -675,6 +675,73 @@ function SessionDetail({
   );
 }
 
+export function animateUsageValue({
+  from,
+  to,
+  reduceMotion = false,
+  onUpdate,
+}) {
+  const canAnimate = (
+    Number.isFinite(from)
+    && from >= 0
+    && Number.isFinite(to)
+    && to >= 0
+    && !reduceMotion
+  );
+
+  if (!canAnimate) {
+    onUpdate(to);
+    return null;
+  }
+
+  const frame = { value: from };
+  return gsap.to(frame, {
+    value: to,
+    duration: 1.5,
+    ease: "power2.out",
+    onUpdate: () => onUpdate(frame.value),
+    onComplete: () => onUpdate(to),
+  });
+}
+
+function AnimatedUsageValue({ value, format }) {
+  const [displayedValue, setDisplayedValue] = useState(value);
+  const displayedValueRef = useRef(value);
+  const targetRef = useRef(value);
+  const [highlightKey, setHighlightKey] = useState(0);
+
+  useEffect(() => {
+    if (Object.is(targetRef.current, value)) return undefined;
+
+    targetRef.current = value;
+    setHighlightKey((key) => key + 1);
+
+    const tween = animateUsageValue({
+      from: displayedValueRef.current,
+      to: value,
+      reduceMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      onUpdate: (nextValue) => {
+        displayedValueRef.current = nextValue;
+        setDisplayedValue(nextValue);
+      },
+    });
+
+    return tween ? () => tween.kill() : undefined;
+  }, [value]);
+
+  return (
+    <span
+      key={highlightKey}
+      className={highlightKey
+        ? "system-summary-value system-summary-value--updated"
+        : "system-summary-value"}
+      aria-label={format(value)}
+    >
+      {format(displayedValue)}
+    </span>
+  );
+}
+
 export function SystemSummary({
   runningCount,
   waitingCount,
@@ -690,9 +757,17 @@ export function SystemSummary({
         {runningCount} running {waitingCount} waiting {sessionCount} sessions
       </span>
       <span>
-        | Tokens {formatTokenCount(usage?.todayTokens)}
+        | Tokens{" "}
+        <AnimatedUsageValue
+          value={usage?.todayTokens}
+          format={formatTokenCount}
+        />
         {" · "}
-        Cost {formatCostUsd(usage?.todayCostUsd)}
+        Cost{" "}
+        <AnimatedUsageValue
+          value={usage?.todayCostUsd}
+          format={formatCostUsd}
+        />
       </span>
       <span>
         | 5H {formatPercent(usage?.fiveHourUsedPercent)}
