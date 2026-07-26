@@ -53,6 +53,14 @@ test("연결된 Live 작업 시간만 snapshot 사이 경과 시간을 보간한
     getDisplayedDuration({ ...session, isWorking: false }, collectedAt, nowMs),
     12,
   );
+  assert.equal(
+    getDisplayedDuration(
+      { ...session, statusBasis: "inferred" },
+      collectedAt,
+      nowMs,
+    ),
+    12,
+  );
 });
 
 test("직전 snapshot과 달라진 토큰·Plan·child·활동만 표시한다", () => {

@@ -101,6 +101,7 @@ export function getDisplayedDuration(session, collectedAt, nowMs) {
   if (
     duration == null
     || !session.isWorking
+    || session.statusBasis === "inferred"
     || measuredAt == null
     || !Number.isFinite(nowMs)
   ) return duration;
