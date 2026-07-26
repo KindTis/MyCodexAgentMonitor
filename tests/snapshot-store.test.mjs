@@ -54,6 +54,7 @@ function thread(id, overrides = {}) {
 function createFakeCatalog(initialThreads = []) {
   const threads = [...initialThreads];
   const goals = new Map();
+  const failingReads = new Set();
   const listCalls = [];
   const readCalls = [];
   let failList = false;
@@ -83,6 +84,10 @@ function createFakeCatalog(initialThreads = []) {
     setFailList(value) {
       failList = value;
     },
+    setFailRead(id, value = true) {
+      if (value) failingReads.add(id);
+      else failingReads.delete(id);
+    },
     setFailGoal(value) {
       failGoal = value;
     },
@@ -108,6 +113,7 @@ function createFakeCatalog(initialThreads = []) {
     },
     async readThread(threadId) {
       readCalls.push(threadId);
+      if (failingReads.has(threadId)) throw new Error("thread unavailable");
       return { thread: structuredClone(threads.find(({ id }) => id === threadId)) };
     },
     async getGoal(threadId) {
@@ -121,6 +127,7 @@ function createStoreHarness({
   threads,
   initialRecords = {},
   startedAt,
+  discoveredChildren = [],
   readRepoMetadata = async (cwd) => ({
     projectName: path.win32.basename(cwd),
     gitBranch: "main",
@@ -165,6 +172,7 @@ function createStoreHarness({
     codexHome: "C:\\Users\\dev\\.codex",
     now: () => nowMs,
     readRepoMetadata,
+    discoverChildren: async () => structuredClone(discoveredChildren),
   });
 
   return {
@@ -190,6 +198,143 @@ function createStoreHarness({
     },
   };
 }
+
+test("catalog와 thread_spawn child를 합치고 fallback만 inferred로 표시한다", async () => {
+  const root = thread("root", { updatedAt: unix("2026-07-26T06:00:00Z") });
+  const duplicate = thread("duplicate", {
+    parentThreadId: "root",
+    source: "subAgentThreadSpawn",
+    createdAt: unix("2026-07-26T06:00:01Z"),
+    updatedAt: unix("2026-07-26T06:00:02Z"),
+    agentNickname: "Catalog child",
+  });
+  const candidate = (id, source, createdAt = "2026-07-26T06:00:01Z") => thread(id, {
+    parentThreadId: "root",
+    source,
+    createdAt: unix(createdAt),
+    updatedAt: unix(createdAt),
+    path: `C:\\Users\\dev\\.codex\\sessions\\${id}.jsonl`,
+    turns: [],
+  });
+  const harness = createStoreHarness({
+    threads: [root, duplicate],
+    startedAt: "2026-07-26T06:00:00Z",
+    initialRecords: {
+      root: [sessionEvent("2026-07-26T06:00:00Z", "task_started", {
+        turn_id: "root-turn",
+      })],
+      duplicate: [sessionEvent("2026-07-26T06:00:01Z", "task_started", {
+        turn_id: "duplicate-turn",
+      })],
+    },
+    discoveredChildren: [
+      candidate("duplicate", {
+        subagent: { thread_spawn: { parent_thread_id: "root" } },
+      }),
+      candidate("spawn-only", {
+        subagent: { thread_spawn: { parent_thread_id: "root" } },
+      }),
+      candidate("guardian", { subagent: { other: "guardian" } }),
+      candidate("unknown", { subagent: { other: "future-kind" } }),
+      candidate("old-complete", {
+        subagent: { thread_spawn: { parent_thread_id: "root" } },
+      }, "2026-07-26T05:40:00Z"),
+      candidate("old-running", {
+        subagent: { thread_spawn: { parent_thread_id: "root" } },
+      }, "2026-07-26T05:40:00Z"),
+    ],
+  });
+
+  const snapshot = await harness.store.initialize();
+  const children = snapshot.sessions[0].children;
+  assert.deepEqual(children.map(({ id }) => id).sort(), ["duplicate", "spawn-only"]);
+  assert.equal(children.filter(({ id }) => id === "duplicate").length, 1);
+  const fallback = children.find(({ id }) => id === "spawn-only");
+  assert.equal(fallback.agentNickname, null);
+  assert.equal(fallback.currentWork, null);
+  assert.equal(fallback.currentActivity, null);
+  assert.deepEqual(fallback.activity, []);
+  assert.deepEqual(fallback.skills, []);
+  assert.equal(fallback.plan, null);
+  assert.equal(fallback.goal, null);
+  assert.equal(fallback.status, "running");
+  assert.equal(fallback.statusBasis, "inferred");
+  assert.equal(fallback.isWorking, false);
+  assert.equal(fallback.tokens, null);
+});
+
+test("JSONL-only child를 같은 ID의 상세 정보로 갱신한다", async () => {
+  const spawnSource = {
+    subagent: { thread_spawn: { parent_thread_id: "root" } },
+  };
+  const spawnOnly = thread("spawn-only", {
+    parentThreadId: "root",
+    source: spawnSource,
+    createdAt: unix("2026-07-26T06:00:01Z"),
+    updatedAt: unix("2026-07-26T06:00:01Z"),
+    turns: [],
+  });
+  const harness = createStoreHarness({
+    threads: [thread("root")],
+    startedAt: "2026-07-26T06:00:00Z",
+    initialRecords: {
+      root: [sessionEvent("2026-07-26T06:00:00Z", "task_started", {
+        turn_id: "root-turn",
+      })],
+    },
+    discoveredChildren: [spawnOnly],
+  });
+  let snapshot = await harness.store.initialize();
+  assert.equal(snapshot.sessions[0].children[0].statusBasis, "inferred");
+
+  harness.addThread(thread("spawn-only", {
+    parentThreadId: "root",
+    source: "subAgentThreadSpawn",
+    createdAt: unix("2026-07-26T06:00:01Z"),
+    updatedAt: unix("2026-07-26T06:00:03Z"),
+    agentNickname: "Recovered",
+  }));
+  harness.appendRecord("spawn-only", sessionEvent(
+    "2026-07-26T06:00:03Z",
+    "task_started",
+    { turn_id: "spawn-only-turn" },
+  ));
+  snapshot = await harness.store.collect();
+  assert.equal(snapshot.sessions[0].children[0].agentNickname, "Recovered");
+  assert.equal(snapshot.sessions[0].children[0].statusBasis, "observed");
+});
+
+test("App Server 장애 중 cached catalog와 새 JSONL 상태를 적용한다", async () => {
+  const harness = createStoreHarness({
+    threads: [thread("root")],
+    startedAt: "2026-07-26T06:00:00Z",
+    initialRecords: {
+      root: [
+        sessionEvent("2026-07-26T06:00:00Z", "task_started", {
+          turn_id: "root-turn",
+        }),
+      ],
+    },
+  });
+  const initial = await harness.store.initialize();
+  harness.appendRecord("root", sessionEvent("2026-07-26T06:00:02Z", "token_count", {
+    info: { total_token_usage: { total_tokens: 42 } },
+  }));
+  harness.appServer.setFailList(true);
+  harness.appServer.setFailRead("root");
+
+  const errorSnapshot = await harness.store.collect();
+  assert.equal(errorSnapshot.connectionStatus, "error");
+  assert.equal(errorSnapshot.errorCode, "APP_SERVER_UNAVAILABLE");
+  assert.equal(errorSnapshot.lastSuccessfulAt, initial.lastSuccessfulAt);
+  assert.equal(errorSnapshot.sessions[0].tokens.root, 42);
+
+  harness.appServer.setFailList(false);
+  harness.appServer.setFailRead("root", false);
+  const recovered = await harness.store.collect();
+  assert.equal(recovered.connectionStatus, "connected");
+  assert.equal(recovered.sessions[0].tokens.root, 42);
+});
 
 test("root session에 cwd의 project name과 현재 git branch를 노출한다", async () => {
   const metadataCalls = [];
@@ -620,7 +765,7 @@ test("두 번째 child 페이지까지 등록하고 토큰을 한 번만 합산�
     `child-${String(index).padStart(3, "0")}`,
     {
       parentThreadId: "root",
-      source: CHILD_SOURCE_KINDS[index % CHILD_SOURCE_KINDS.length],
+      source: CHILD_SOURCE_KINDS[index % (CHILD_SOURCE_KINDS.length - 1)],
       updatedAt: unix("2026-07-26T05:59:50Z"),
     },
   ));

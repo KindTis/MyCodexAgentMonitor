@@ -3,6 +3,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import {
+  classifyChildSource,
+  discoverChildCandidates,
   IDLE_AFTER_MS,
   reduceThreadRecords,
 } from "./session-log.mjs";
@@ -30,6 +32,7 @@ export class SnapshotStore {
   #observations = new Map();
   #threads = new Map();
   #goals = new Map();
+  #childCandidates = new Map();
   #catalogWatermark = null;
   #snapshot = {
     collectedAt: null,
@@ -45,12 +48,14 @@ export class SnapshotStore {
     codexHome,
     now = Date.now,
     readRepoMetadata = getRepoMetadata,
+    discoverChildren = discoverChildCandidates,
   }) {
     this.appServer = appServer;
     this.tailer = tailer;
     this.codexHome = codexHome;
     this.now = now;
     this.readRepoMetadata = readRepoMetadata;
+    this.discoverChildren = discoverChildren;
     this.monitorStartedAt = now();
   }
 
@@ -95,18 +100,36 @@ export class SnapshotStore {
     const goals = new Map(
       [...this.#goals].map(([id, goal]) => [id, structuredClone(goal)]),
     );
+    const childCandidates = new Map(
+      [...this.#childCandidates].map(([id, candidate]) => [id, structuredClone(candidate)]),
+    );
+    let appServerFailed = false;
+    let catalogSucceeded = true;
 
     this.tailer.beginBatch();
     try {
-      const discoveredRoots = await this.#listCatalog({
-        boundary,
-        sourceKinds: ROOT_SOURCE_KINDS,
-      });
+      let discoveredRoots = [];
+      try {
+        discoveredRoots = await this.#listCatalog({
+          boundary,
+          sourceKinds: ROOT_SOURCE_KINDS,
+        });
+      } catch {
+        appServerFailed = true;
+        catalogSucceeded = false;
+      }
       const discoveredRootIds = new Set(discoveredRoots.map(({ id }) => id));
       const rootIds = new Set([...registeredRoots, ...discoveredRootIds]);
 
       for (const rootId of rootIds) {
-        const root = await this.#readThread(rootId);
+        let root;
+        try {
+          root = await this.#readThread(rootId);
+        } catch {
+          appServerFailed = true;
+          root = threads.get(rootId) ?? null;
+        }
+        if (!root) continue;
         const observation = await this.#readObservation(
           observations.get(rootId),
           root,
@@ -119,23 +142,120 @@ export class SnapshotStore {
         registeredRoots.add(rootId);
         threads.set(rootId, root);
         observations.set(rootId, observation);
-        goals.set(rootId, await this.#readGoal(rootId));
+        try {
+          goals.set(rootId, await this.#readGoal(rootId));
+        } catch {
+          appServerFailed = true;
+        }
+      }
+
+      let discoveredFromJsonl;
+      try {
+        discoveredFromJsonl = await this.discoverChildren({
+          codexHome: this.codexHome,
+          parentThreadIds: [...registeredRoots],
+          updatedAfterMs: boundary * 1000,
+        });
+      } catch (error) {
+        throw new SessionReadFailure({ cause: error });
       }
 
       for (const rootId of registeredRoots) {
-        const discoveredChildren = await this.#listCatalog({
-          boundary,
-          sourceKinds: CHILD_SOURCE_KINDS,
-          ancestorThreadId: rootId,
-        });
+        let discoveredChildren = [];
+        try {
+          discoveredChildren = await this.#listCatalog({
+            boundary,
+            sourceKinds: CHILD_SOURCE_KINDS,
+            ancestorThreadId: rootId,
+          });
+        } catch {
+          appServerFailed = true;
+          catalogSucceeded = false;
+        }
         const children = registeredChildren.get(rootId) ?? new Set();
-        const childIds = new Set([
-          ...children,
-          ...discoveredChildren.map(({ id }) => id),
-        ]);
+        const candidatesById = new Map(
+          [...childCandidates]
+            .filter(([, { thread }]) => thread.parentThreadId === rootId),
+        );
+        for (const childId of children) {
+          if (!candidatesById.has(childId) && threads.has(childId)) {
+            candidatesById.set(childId, {
+              thread: threads.get(childId),
+              spawnObserved: false,
+            });
+          }
+        }
+        for (const item of discoveredChildren) {
+          const current = candidatesById.get(item.id);
+          candidatesById.set(item.id, {
+            thread: {
+              ...current?.thread,
+              ...item,
+              path: item.path ?? current?.thread.path ?? null,
+              parentThreadId: item.parentThreadId ?? current?.thread.parentThreadId ?? rootId,
+              source: item.source ?? current?.thread.source ?? "unknown",
+            },
+            spawnObserved: current?.spawnObserved ?? false,
+          });
+        }
+        for (const item of discoveredFromJsonl.filter(
+          ({ parentThreadId }) => parentThreadId === rootId,
+        )) {
+          const current = candidatesById.get(item.id);
+          candidatesById.set(item.id, {
+            thread: {
+              ...item,
+              ...current?.thread,
+              path: current?.thread.path ?? item.path,
+              parentThreadId: current?.thread.parentThreadId ?? item.parentThreadId,
+              source: current?.thread.source ?? item.source,
+            },
+            spawnObserved: true,
+          });
+        }
 
-        for (const childId of childIds) {
-          const child = await this.#readThread(childId);
+        for (const [childId, candidate] of candidatesById) {
+          const sourceKind = classifyChildSource(candidate.thread.source);
+          if (sourceKind === "guardian") {
+            childCandidates.delete(childId);
+            for (const ids of registeredChildren.values()) ids.delete(childId);
+            threads.delete(childId);
+            observations.delete(childId);
+            goals.delete(childId);
+            continue;
+          }
+          childCandidates.set(childId, candidate);
+          if (sourceKind === "unknown") {
+            children.delete(childId);
+            continue;
+          }
+
+          let child;
+          try {
+            child = await this.#readThread(childId);
+          } catch {
+            appServerFailed = true;
+            child = threads.get(childId) ?? null;
+          }
+          if (!child) {
+            const createdAt = epochSecondsToMs(candidate.thread.createdAt);
+            if (!candidate.spawnObserved || createdAt < this.monitorStartedAt) continue;
+            children.add(childId);
+            threads.set(childId, candidate.thread);
+            observations.set(
+              childId,
+              createFallbackChildObservation(candidate.thread, nowMs),
+            );
+            goals.delete(childId);
+            continue;
+          }
+          child = {
+            ...candidate.thread,
+            ...child,
+            path: child.path ?? candidate.thread.path,
+            parentThreadId: child.parentThreadId ?? candidate.thread.parentThreadId,
+            source: child.source ?? candidate.thread.source,
+          };
           const observation = await this.#readObservation(
             observations.get(childId),
             child,
@@ -148,7 +268,11 @@ export class SnapshotStore {
           children.add(childId);
           threads.set(childId, child);
           observations.set(childId, observation);
-          goals.set(childId, await this.#readGoal(childId));
+          try {
+            goals.set(childId, await this.#readGoal(childId));
+          } catch {
+            appServerFailed = true;
+          }
         }
         registeredChildren.set(rootId, children);
       }
@@ -164,9 +288,11 @@ export class SnapshotStore {
       ));
       const snapshot = {
         collectedAt,
-        lastSuccessfulAt: collectedAt,
-        connectionStatus: "connected",
-        errorCode: null,
+        lastSuccessfulAt: appServerFailed
+          ? this.#snapshot.lastSuccessfulAt
+          : collectedAt,
+        connectionStatus: appServerFailed ? "error" : "connected",
+        errorCode: appServerFailed ? "APP_SERVER_UNAVAILABLE" : null,
         sessions: buildSessions({
           registeredRoots,
           registeredChildren,
@@ -182,7 +308,8 @@ export class SnapshotStore {
       this.#observations = observations;
       this.#threads = threads;
       this.#goals = goals;
-      this.#catalogWatermark = candidateWatermark;
+      this.#childCandidates = childCandidates;
+      if (catalogSucceeded) this.#catalogWatermark = candidateWatermark;
       this.#snapshot = snapshot;
       this.tailer.commitBatch();
       return this.snapshot;
@@ -264,6 +391,39 @@ export class SnapshotStore {
   }
 }
 
+function createFallbackChildObservation(thread, nowMs) {
+  const startedAt = toIso(thread.createdAt);
+  const startedMs = Date.parse(startedAt);
+  const status = Number.isFinite(startedMs) && nowMs - startedMs >= IDLE_AFTER_MS
+    ? "idle"
+    : "running";
+  return {
+    turnId: null,
+    assignedWork: "",
+    skills: [],
+    plan: null,
+    tokens: null,
+    status,
+    statusBasis: "inferred",
+    currentActivity: null,
+    lastActivityAt: startedAt,
+    lastObservedAt: null,
+    startedAt,
+    endedAt: null,
+    durationSeconds: 0,
+    activity: [],
+    pendingCalls: {},
+    terminalStatus: null,
+    terminalStatusBasis: null,
+    workingMilliseconds: 0,
+    workingSince: null,
+    workingPauseCalls: {},
+    workingRecordKeys: {},
+    sawTaskStarted: false,
+    isWorking: false,
+  };
+}
+
 function buildSessions({
   registeredRoots,
   registeredChildren,
@@ -288,7 +448,10 @@ function buildSessions({
       if (!root || !observation) return null;
 
       const rootTokens = observation.tokens ?? 0;
-      const childTokens = childItems.reduce((sum, child) => sum + child.tokens, 0);
+      const childTokens = childItems.reduce(
+        (sum, child) => sum + (Number.isFinite(child.tokens) ? child.tokens : 0),
+        0,
+      );
       const metadata = repoMetadata.get(root.cwd);
       return {
         id: root.id,
@@ -300,6 +463,7 @@ function buildSessions({
         gitBranch: metadata?.gitBranch ?? "No Git branch",
         assignedWork: observation.assignedWork,
         status: observation.status,
+        statusBasis: observation.statusBasis,
         isWorking: observation.isWorking,
         currentActivity: cloneOrNull(observation.currentActivity),
         lastActivityAt: observation.lastActivityAt,
@@ -353,13 +517,14 @@ function buildChild(thread, observation, goal, rootId) {
     agentNickname: thread.agentNickname,
     agentRole: thread.agentRole,
     status: observation.status,
+    statusBasis: observation.statusBasis,
     isWorking: observation.isWorking,
     currentActivity: cloneOrNull(observation.currentActivity),
     lastActivityAt: observation.lastActivityAt,
     startedAt: observation.startedAt,
     endedAt: observation.endedAt,
     durationSeconds: observation.durationSeconds,
-    tokens: observation.tokens ?? 0,
+    tokens: Number.isFinite(observation.tokens) ? observation.tokens : null,
     skills: [...observation.skills],
     plan: cloneOrNull(observation.plan),
     goal: normalizeGoal(goal),
