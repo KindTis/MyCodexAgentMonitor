@@ -189,7 +189,7 @@ time,
 .page-content {
   display: grid;
   min-height: max(620px, calc(100dvh - 95px));
-  grid-template-columns: minmax(360px, 28%) minmax(0, 1fr);
+  grid-template-columns: minmax(360px, 25%) minmax(0, 1fr);
   align-items: stretch;
   gap: 10px;
   width: calc(100% - 34px);

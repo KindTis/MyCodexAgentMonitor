@@ -12,6 +12,13 @@ function declarations(selector, source = css) {
   return match[1].replace(/\s+/g, " ");
 }
 
+test("데스크톱 목록은 전체 너비의 25%를 사용한다", () => {
+  assert.match(
+    declarations(".page-content"),
+    /grid-template-columns: minmax\(360px, 25%\) minmax\(0, 1fr\)/,
+  );
+});
+
 test("상세 DOM은 세 개 논리 열의 합의된 카드 순서를 유지한다", () => {
   const detail = app.slice(
     app.indexOf("function SessionDetail"),
