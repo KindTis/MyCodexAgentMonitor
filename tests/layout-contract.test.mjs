@@ -53,6 +53,26 @@ test("데스크톱 상세 열과 각 열의 행 비율이 정확하다", () => {
   );
 });
 
+test("데스크톱 상세 카드는 행을 채우고 인접 카드 사이를 구분한다", () => {
+  assert.match(declarations(".detail-column"), /gap: 0/);
+  assert.match(declarations(".detail-card"), /display: flex/);
+  assert.match(declarations(".detail-card"), /flex-direction: column/);
+
+  const divider = declarations(".detail-card + .detail-card");
+  assert.match(divider, /padding-top: 13px/);
+  assert.match(divider, /border-top: 1px solid var\(--line\)/);
+
+  const scrollerMatch = css.match(
+    /\.task-list,\s*\.child-table,\s*\.activity-list\s*\{([^}]+)\}/,
+  );
+  assert.ok(scrollerMatch, "missing shared detail scroller rule");
+  const scroller = scrollerMatch[1].replace(/\s+/g, " ");
+  assert.match(scroller, /min-height: 0/);
+  assert.match(scroller, /flex: 1/);
+  assert.match(scroller, /max-height: none/);
+  assert.match(scroller, /overflow-y: auto/);
+});
+
 test("1120px 이하에서 행 비율을 해제하고 긴 세 목록만 내부 스크롤한다", () => {
   const responsive = css.slice(
     css.indexOf("@media (max-width: 1120px)"),
