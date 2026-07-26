@@ -1068,9 +1068,6 @@ export function App() {
                     : <CaretDown size={12} />}
                 </button>
               )}
-              <ConnectionState status={connectionStatus}>
-                {feedAge || "waiting for first snapshot"}
-              </ConnectionState>
             </div>
           </header>
 
@@ -1135,7 +1132,9 @@ export function App() {
       </div>
 
       <footer className="page-footer">
-        <ConnectionState status={connectionStatus}>local Codex snapshot</ConnectionState>
+        <ConnectionState status={connectionStatus}>
+          {feedAge || "waiting for first snapshot"}
+        </ConnectionState>
         <span>Session event time shown in UTC</span>
       </footer>
 

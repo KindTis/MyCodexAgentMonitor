@@ -209,7 +209,7 @@ time,
   gap: 10px;
   width: calc(100% - 34px);
   margin: 0 auto;
-  padding: 0 0 26px;
+  padding: 10px 0;
 }
 
 .ledger-section {
@@ -321,11 +321,6 @@ time,
   justify-content: center;
   width: 29px;
   padding: 0;
-}
-
-.feed-state .connection-state {
-  grid-column: 1 / -1;
-  font: inherit;
 }
 
 .ledger-scroll {
@@ -1750,10 +1745,6 @@ time,
     display: inline;
     margin: 0 0 0 8px;
     font-size: 10px;
-  }
-
-  .feed-state .connection-state {
-    display: none;
   }
 
   .detail-heading {

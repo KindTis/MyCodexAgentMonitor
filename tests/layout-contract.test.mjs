@@ -19,6 +19,12 @@ test("데스크톱 목록은 전체 너비의 25%를 사용한다", () => {
   );
 });
 
+test("데스크톱 콘텐츠 상하 여백은 패널 사이 간격과 같은 10px이다", () => {
+  const pageContent = declarations(".page-content");
+  assert.match(pageContent, /gap: 10px/);
+  assert.match(pageContent, /padding: 10px 0/);
+});
+
 test("데스크톱 상세 영역은 상태바를 제외한 뷰포트 높이 안에 머문다", () => {
   const pageContent = declarations(".page-content");
   assert.match(pageContent, /height: calc\(100dvh - 95px\)/);
