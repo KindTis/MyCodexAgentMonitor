@@ -20,5 +20,11 @@
   "18": "vite.config.mjs",
   "19": "로컬 Codex 실시간 현황판 구현 항목 매핑",
   "20": "README.md",
-  "21": "Global Constraints"
+  "21": "Global Constraints",
+  "22": "상단 Codex 사용량 요약 및 상세 화면 배치 설계",
+  "23": "usage.mjs",
+  "24": "상단 Codex 사용량 요약 및 상세 배치 구현 항목 매핑",
+  "25": "child-agents-ui.test.mjs",
+  "26": "layout-contract.test.mjs",
+  "27": "topbar-usage-ui.test.mjs"
 }
