@@ -8,7 +8,7 @@ const server = await createServer({
   appType: "custom",
   server: { middlewareMode: true },
 });
-const { SystemSummary } = await server.ssrLoadModule("/src/App.jsx");
+const { animateUsageValue, SystemSummary } = await server.ssrLoadModule("/src/App.jsx");
 
 test.after(async () => {
   await server.close();
@@ -50,11 +50,12 @@ test("조회 전 또는 실패한 사용량은 각 자리에 em dash를 표시�
       oneWeekUsedPercent: null,
     },
   }));
+  const text = markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
-  assert.match(markup, /Tokens —/);
-  assert.match(markup, /Cost —/);
-  assert.match(markup, /5H —/);
-  assert.match(markup, /1W —/);
+  assert.match(text, /Tokens —/);
+  assert.match(text, /Cost —/);
+  assert.match(text, /5H —/);
+  assert.match(text, /1W —/);
 });
 
 test("Paused 상태에서도 전달된 현재 KST 시각을 표시한다", () => {
@@ -66,4 +67,83 @@ test("Paused 상태에서도 전달된 현재 KST 시각을 표시한다", () =>
   }));
 
   assert.match(markup, /21:19:45 KST/);
+});
+
+test("증가하는 사용량은 1.5초 동안 중간값을 거쳐 목표값에 도달한다", () => {
+  const values = [];
+  const tween = animateUsageValue({
+    from: 100,
+    to: 150,
+    onUpdate: (value) => values.push(value),
+  });
+
+  tween.pause(0);
+  tween.time(0.75);
+  assert.ok(values.at(-1) > 100 && values.at(-1) < 150);
+  tween.time(1.5);
+  assert.equal(values.at(-1), 150);
+  assert.equal(tween.duration(), 1.5);
+  tween.kill();
+});
+
+test("감소하는 사용량도 1.5초 동안 중간값을 거쳐 목표값에 도달한다", () => {
+  const values = [];
+  const tween = animateUsageValue({
+    from: 150,
+    to: 100,
+    onUpdate: (value) => values.push(value),
+  });
+
+  tween.pause(0);
+  tween.time(0.75);
+  assert.ok(values.at(-1) < 150 && values.at(-1) > 100);
+  tween.time(1.5);
+  assert.equal(values.at(-1), 100);
+  assert.equal(tween.duration(), 1.5);
+  tween.kill();
+});
+
+test("숫자와 결측값 사이는 보간하지 않고 즉시 반영한다", () => {
+  for (const [from, to] of [[null, 100], [100, null]]) {
+    const values = [];
+    const tween = animateUsageValue({
+      from,
+      to,
+      onUpdate: (value) => values.push(value),
+    });
+
+    assert.equal(tween, null);
+    assert.deepEqual(values, [to]);
+  }
+});
+
+test("reduced-motion에서는 숫자를 즉시 반영한다", () => {
+  const values = [];
+  const tween = animateUsageValue({
+    from: 100,
+    to: 150,
+    reduceMotion: true,
+    onUpdate: (value) => values.push(value),
+  });
+
+  assert.equal(tween, null);
+  assert.deepEqual(values, [150]);
+});
+
+test("상단 Token과 Cost는 초기 하이라이트 없이 전환 요소로 렌더링된다", () => {
+  const markup = renderToStaticMarkup(createElement(SystemSummary, {
+    ...props,
+    usage: {
+      todayTokens: 100,
+      todayCostUsd: 1,
+      fiveHourUsedPercent: 21,
+      oneWeekUsedPercent: 6,
+    },
+  }));
+
+  assert.equal(
+    [...markup.matchAll(/class="system-summary-value"/g)].length,
+    2,
+  );
+  assert.doesNotMatch(markup, /system-summary-value--updated/);
 });
