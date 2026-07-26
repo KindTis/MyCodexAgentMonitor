@@ -1,5 +1,7 @@
 import * as fs from "node:fs/promises";
+import { createReadStream } from "node:fs";
 import path from "node:path";
+import { createInterface } from "node:readline";
 
 export const IDLE_AFTER_MS = 10 * 60 * 1000;
 
@@ -106,6 +108,90 @@ function parseJsonLine(line) {
   }
 }
 
+export function classifyChildSource(source) {
+  if (["subAgent", "subAgentReview", "subAgentCompact", "subAgentThreadSpawn"].includes(source)) {
+    return "user";
+  }
+  if (source === "subAgentOther") return "unknown";
+  const subAgent = source?.subAgent ?? source?.subagent;
+  if (!subAgent) return "unknown";
+  if (subAgent.other === "guardian") return "guardian";
+  if (
+    subAgent.thread_spawn
+    || ["review", "compact", "memory_consolidation"].includes(subAgent)
+  ) return "user";
+  return "unknown";
+}
+
+export async function discoverChildCandidates({
+  codexHome,
+  parentThreadIds,
+  updatedAfterMs = 0,
+}) {
+  const parents = new Set(parentThreadIds);
+  if (!parents.size) return [];
+  const sessionsRoot = path.join(path.resolve(codexHome), "sessions");
+  let entries;
+  try {
+    entries = await fs.readdir(sessionsRoot, { recursive: true, withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+
+  const candidates = [];
+  // ponytail: 최근 파일만 stat하는 O(n) scan이다. 3초 수집이 측정상 느릴 때만 디렉터리 watermark를 추가한다.
+  for (const entry of entries) {
+    if (!entry.isFile() || path.extname(entry.name) !== ".jsonl") continue;
+    const filePath = path.join(entry.parentPath, entry.name);
+    const metadata = await fs.stat(filePath);
+    if (metadata.mtimeMs < updatedAfterMs) continue;
+    const record = await readFirstJsonRecord(filePath);
+    if (record?.type !== "session_meta") continue;
+
+    const payload = record.payload ?? {};
+    const spawn = payload.source?.subagent?.thread_spawn
+      ?? payload.source?.subAgent?.thread_spawn;
+    const parentThreadId = payload.parent_thread_id ?? spawn?.parent_thread_id ?? null;
+    if (!parents.has(parentThreadId)) continue;
+    const id = payload.id ?? payload.session_id;
+    if (!id) continue;
+    const createdAt = Date.parse(payload.timestamp ?? record.timestamp) / 1000;
+
+    candidates.push({
+      id,
+      sessionId: payload.session_id ?? id,
+      parentThreadId,
+      createdAt: Number.isFinite(createdAt) ? createdAt : metadata.birthtimeMs / 1000,
+      updatedAt: metadata.mtimeMs / 1000,
+      status: { type: "notLoaded" },
+      path: filePath,
+      cwd: payload.cwd ?? null,
+      source: payload.source ?? "unknown",
+      agentNickname: payload.agent_nickname ?? spawn?.agent_nickname ?? null,
+      agentRole: payload.agent_role ?? spawn?.agent_role ?? null,
+      name: null,
+      turns: [],
+    });
+  }
+  return candidates;
+}
+
+async function readFirstJsonRecord(filePath) {
+  const input = createReadStream(filePath, { encoding: "utf8" });
+  const lines = createInterface({ input, crlfDelay: Infinity });
+  try {
+    for await (const line of lines) {
+      const [record] = parseJsonLine(line);
+      if (record) return record;
+    }
+    return null;
+  } finally {
+    lines.close();
+    input.destroy();
+  }
+}
+
 export function classifyToolCall(name, input = {}) {
   const parsedInput = typeof input === "string" ? parseArguments(input) : input;
   const leaf = String(name).split(".").at(-1);
@@ -132,8 +218,8 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
     (record) => record.type === "event_msg" && record.payload?.type === "task_started",
   );
   const targetTurnId = lastTaskStart?.payload?.turn_id
-    ?? latestTurn?.id
     ?? previous?.turnId
+    ?? latestTurn?.id
     ?? null;
   let observation = previous?.turnId === targetTurnId
     ? structuredClone(previous)
@@ -145,6 +231,10 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
   observation.workingSince ??= null;
   observation.workingPauseCalls ??= {};
   observation.workingRecordKeys ??= {};
+  observation.statusBasis ??= "inferred";
+  observation.lastObservedAt ??= null;
+  observation.sawTaskStarted ??= false;
+  observation.terminalStatusBasis ??= null;
   if (!previous && records.length === 0 && thread.path == null) {
     observation.workingMilliseconds = getThreadWorkingMilliseconds(thread);
   }
@@ -158,6 +248,7 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
       activeTurnId = payload.turn_id ?? targetTurnId;
       if (activeTurnId !== targetTurnId) continue;
       observation = createObservation(targetTurnId, latestTurn, observation);
+      observation.sawTaskStarted = true;
       observation.startedAt = toIso(payload.started_at ?? record.timestamp)
         ?? observation.startedAt;
       touch(observation, record.timestamp ?? payload.started_at);
@@ -172,12 +263,14 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
     }
   }
 
-  const turn = thread.turns?.find(({ id }) => id === targetTurnId) ?? latestTurn;
+  const turn = thread.turns?.find(({ id }) => id === targetTurnId) ?? null;
   applyTurnItems(observation, turn);
   applyTurnTerminalState(observation, thread, turn);
   observation.currentActivity = getCurrentActivity(observation.pendingCalls);
-  observation.status = getStatus(observation, thread, turn, nowMs);
-  observation.isWorking = getIsWorking(observation, thread);
+  const status = getStatus(observation, thread, turn, nowMs);
+  observation.status = status.status;
+  observation.statusBasis = status.basis;
+  observation.isWorking = getIsWorking(observation);
   syncWorkingClock(observation, nowMs, previous == null);
   observation.activity = observation.activity
     .filter((item, index, items) => items.findIndex(({ id }) => id === item.id) === index)
@@ -204,6 +297,10 @@ function createObservation(turnId, turn, previous = null) {
     activity: [],
     pendingCalls: {},
     terminalStatus: null,
+    terminalStatusBasis: null,
+    statusBasis: "inferred",
+    lastObservedAt: null,
+    sawTaskStarted: false,
     workingMilliseconds: previous?.workingMilliseconds ?? 0,
     workingSince: previous?.workingSince ?? null,
     workingPauseCalls: structuredClone(previous?.workingPauseCalls ?? {}),
@@ -214,8 +311,9 @@ function createObservation(turnId, turn, previous = null) {
 
 function applyEventRecord(observation, record) {
   const payload = record.payload ?? {};
+  if (payload.turn_id && payload.turn_id !== observation.turnId) return;
   const recognized = ["user_message", "token_count", "task_complete"].includes(payload.type)
-    || ["cancelled", "stopped"].includes(payload.status);
+    || ["failed", "cancelled", "stopped", "interrupted"].includes(payload.status);
   if (!recognized) return;
   touch(observation, record.timestamp);
 
@@ -225,12 +323,14 @@ function applyEventRecord(observation, record) {
     const tokens = payload.info?.total_token_usage?.total_tokens;
     if (Number.isFinite(tokens)) observation.tokens = tokens;
   } else if (payload.type === "task_complete") {
-    observation.terminalStatus = ["cancelled", "stopped"].includes(payload.status)
+    observation.terminalStatus = ["failed", "cancelled", "stopped"].includes(payload.status)
       ? payload.status
-      : "complete";
+      : payload.status === "interrupted" ? "stopped" : "complete";
+    observation.terminalStatusBasis = "observed";
     observation.endedAt = toIso(payload.completed_at ?? record.timestamp);
-  } else if (["cancelled", "stopped"].includes(payload.status)) {
-    observation.terminalStatus = payload.status;
+  } else if (["failed", "cancelled", "stopped", "interrupted"].includes(payload.status)) {
+    observation.terminalStatus = payload.status === "interrupted" ? "stopped" : payload.status;
+    observation.terminalStatusBasis = "observed";
     observation.endedAt = toIso(payload.completed_at ?? record.timestamp);
   }
 }
@@ -388,7 +488,7 @@ function getCurrentActivity(pendingCalls) {
 }
 
 function applyTurnTerminalState(observation, thread, turn) {
-  if (!turn) return;
+  if (!turn || turn.id !== observation.turnId) return;
   if (turn.status === "failed") observation.terminalStatus = "failed";
   if (turn.status === "interrupted" && thread.status?.type !== "notLoaded") {
     observation.terminalStatus = "stopped";
@@ -399,6 +499,7 @@ function applyTurnTerminalState(observation, thread, turn) {
   if (["completed", "complete"].includes(turn.status)) {
     observation.terminalStatus ??= "complete";
   }
+  if (observation.terminalStatus) observation.terminalStatusBasis ??= "observed";
   if (observation.terminalStatus && !observation.endedAt) {
     observation.endedAt = toIso(turn.completedAt)
       ?? addDuration(observation.startedAt, turn.durationMs)
@@ -407,31 +508,52 @@ function applyTurnTerminalState(observation, thread, turn) {
 }
 
 function getStatus(observation, thread, turn, nowMs) {
-  const flags = thread.status?.activeFlags ?? [];
   const calls = Object.values(observation.pendingCalls);
-  const hasInputRequest = calls.some(({ name }) => name.split(".").at(-1) === "request_user_input");
+  const hasInputRequest = calls.some(
+    ({ name }) => name.split(".").at(-1) === "request_user_input",
+  );
 
-  if (
-    flags.includes("waitingOnApproval")
-    || flags.includes("waitingOnUserInput")
-    || hasInputRequest
-  ) return "needs_input";
-  if (thread.status?.type === "systemError" || turn?.status === "failed") return "failed";
-  if (["cancelled", "stopped"].includes(observation.terminalStatus)) {
-    return observation.terminalStatus;
+  if (observation.terminalStatus) {
+    return {
+      status: observation.terminalStatus,
+      basis: observation.terminalStatusBasis ?? "observed",
+    };
   }
-  if (turn?.status === "interrupted" && thread.status?.type !== "notLoaded") {
-    return "stopped";
+  if (hasInputRequest) return { status: "needs_input", basis: "observed" };
+  if (canUseAppServerWait(thread, turn, observation)) {
+    return { status: "needs_input", basis: "inferred" };
   }
   if (calls.some(({ name }) => ["wait", "wait_agent"].includes(name.split(".").at(-1)))) {
-    return "waiting";
+    return { status: "waiting", basis: "observed" };
   }
-  if (calls.some(({ name }) => name.split(".").at(-1) === "update_plan")) return "planning";
-  if (observation.terminalStatus === "complete") return "complete";
+  if (calls.some(({ name }) => name.split(".").at(-1) === "update_plan")) {
+    return { status: "planning", basis: "observed" };
+  }
+  if (calls.length) return { status: "running", basis: "observed" };
 
   const lastActivity = Date.parse(observation.lastActivityAt);
-  if (!Number.isNaN(lastActivity) && nowMs - lastActivity >= IDLE_AFTER_MS) return "idle";
-  return "running";
+  if (!Number.isNaN(lastActivity) && nowMs - lastActivity >= IDLE_AFTER_MS) {
+    return { status: "idle", basis: "inferred" };
+  }
+  if (observation.sawTaskStarted) return { status: "running", basis: "observed" };
+  if (thread.status?.type === "systemError") return { status: "failed", basis: "inferred" };
+  return { status: "running", basis: "inferred" };
+}
+
+function canUseAppServerWait(thread, turn, observation) {
+  if (!turn || turn.id !== observation.turnId) return false;
+  const flags = thread.status?.activeFlags ?? [];
+  if (
+    !flags.includes("waitingOnApproval")
+    && !flags.includes("waitingOnUserInput")
+  ) return false;
+
+  const observedAt = Date.parse(observation.lastObservedAt);
+  if (Number.isNaN(observedAt)) return true;
+  const appServerUpdatedAt = Number.isFinite(thread.updatedAt)
+    ? thread.updatedAt * 1000
+    : Number.NaN;
+  return Number.isFinite(appServerUpdatedAt) && appServerUpdatedAt >= observedAt;
 }
 
 function getDurationSeconds(observation, nowMs) {
@@ -442,14 +564,9 @@ function getDurationSeconds(observation, nowMs) {
   return Math.floor((observation.workingMilliseconds + activeMilliseconds) / 1000);
 }
 
-function getIsWorking(observation, thread) {
-  const flags = thread.status?.activeFlags ?? [];
-  if (
-    flags.includes("waitingOnApproval")
-    || flags.includes("waitingOnUserInput")
-    || Object.keys(observation.workingPauseCalls).length
-  ) return false;
-  return ["running", "planning", "waiting"].includes(observation.status);
+function getIsWorking(observation) {
+  return observation.statusBasis === "observed"
+    && ["running", "planning"].includes(observation.status);
 }
 
 function syncWorkingClock(observation, nowMs, initial) {
@@ -506,6 +623,9 @@ function touch(observation, value) {
   if (!timestamp) return;
   if (!observation.lastActivityAt || Date.parse(timestamp) >= Date.parse(observation.lastActivityAt)) {
     observation.lastActivityAt = timestamp;
+  }
+  if (!observation.lastObservedAt || Date.parse(timestamp) >= Date.parse(observation.lastObservedAt)) {
+    observation.lastObservedAt = timestamp;
   }
 }
 

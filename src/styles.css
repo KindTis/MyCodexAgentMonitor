@@ -585,6 +585,13 @@ time,
   white-space: nowrap;
 }
 
+.status-basis {
+  color: currentColor;
+  font: 8px/1 "Geist Mono Variable", monospace;
+  letter-spacing: 0;
+  opacity: 0.72;
+}
+
 .status-badge--running {
   color: var(--mint);
   background: rgb(94 214 198 / 7%);

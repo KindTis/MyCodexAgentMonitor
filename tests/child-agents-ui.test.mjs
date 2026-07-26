@@ -21,6 +21,7 @@ const child = {
   agentNickname: "navigator",
   agentRole: "research",
   status: "running",
+  statusBasis: "observed",
   isWorking: true,
   lastActivityAt: "2026-07-26T06:00:02Z",
   startedAt: "2026-07-26T06:00:00Z",
@@ -65,6 +66,22 @@ test("Child Agents 목록은 필요한 다섯 열만 표시한다", () => {
   assert.match(markup, />1:15</);
   assert.doesNotMatch(markup, />Tokens</);
   assert.doesNotMatch(markup, />Skills</);
+});
+
+test("추정 상태에만 작은 인라인 근거를 표시한다", () => {
+  const observed = renderToStaticMarkup(createElement(ChildAgents, {
+    ...props,
+    children: [{ ...child, statusBasis: "observed" }],
+    selectedChildId: null,
+  }));
+  const inferred = renderToStaticMarkup(createElement(ChildAgents, {
+    ...props,
+    children: [{ ...child, statusBasis: "inferred" }],
+    selectedChildId: null,
+  }));
+
+  assert.doesNotMatch(observed, />추정</);
+  assert.match(inferred, /class="status-basis">추정</);
 });
 
 test("선택한 Child Agent의 합의된 상세 정보를 dialog에 표시한다", () => {

@@ -125,7 +125,7 @@ function AgentMark({ item, size = 34, active = false, handoff = false }) {
   );
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, statusBasis }) {
   const normalizedStatus = normalizeStatus(status);
   const meta = statusMeta[normalizedStatus];
   const Icon = meta.icon;
@@ -134,6 +134,7 @@ function StatusBadge({ status }) {
     <span className={`status-badge status-badge--${normalizedStatus}`}>
       <Icon size={13} weight={normalizedStatus === "complete" ? "fill" : "bold"} />
       {meta.label}
+      {statusBasis === "inferred" && <small className="status-basis">추정</small>}
     </span>
   );
 }
@@ -184,7 +185,7 @@ function SessionRow({
         <small>{session.assignedWork || "No assigned work"}</small>
       </span>
       <span className="session-state">
-        <StatusBadge status={session.status} />
+        <StatusBadge status={session.status} statusBasis={session.statusBasis} />
         <small className="session-activity">
           {session.currentActivity?.label ?? "No active tool"}
           {relativeTime ? ` · ${relativeTime}` : ""}
@@ -294,7 +295,7 @@ function ChildAgentDialog({ child, onClose, collectedAt, clock }) {
           </div>
         </div>
         <div className="child-dialog-meta">
-          <StatusBadge status={child.status} />
+          <StatusBadge status={child.status} statusBasis={child.statusBasis} />
           <span>{formatDuration(duration)} session</span>
           <button
             type="button"
@@ -318,7 +319,7 @@ function ChildAgentDialog({ child, onClose, collectedAt, clock }) {
             <p className="empty-copy">No active Turn was observed.</p>
           )}
           <div className="work-state">
-            <StatusBadge status={child.status} />
+            <StatusBadge status={child.status} statusBasis={child.statusBasis} />
             <small>{child.currentActivity?.label ?? "No active tool"}</small>
           </div>
         </article>
@@ -438,7 +439,9 @@ export function ChildAgents({
                   <small>{child.agentRole ?? "Child agent"}</small>
                 </span>
               </span>
-              <span role="cell"><StatusBadge status={child.status} /></span>
+              <span role="cell">
+                <StatusBadge status={child.status} statusBasis={child.statusBasis} />
+              </span>
               <span role="cell">{formatDuration(duration)}</span>
               <span role="cell">
                 {progress.total ? `${progress.completed}/${progress.total}` : "—"}
@@ -534,7 +537,7 @@ function SessionDetail({
           </div>
         </div>
         <div className="detail-meta">
-          <StatusBadge status={session.status} />
+          <StatusBadge status={session.status} statusBasis={session.statusBasis} />
           <span>{formatDuration(duration)} session</span>
           <span>Last update {relativeTime || "unavailable"}</span>
           <button type="button" onClick={onOpenCodex}>
@@ -558,7 +561,7 @@ function SessionDetail({
             )}
             <LiveStep session={session} clock={clock} collectedAt={collectedAt} />
             <div className="work-state">
-              <StatusBadge status={session.status} />
+              <StatusBadge status={session.status} statusBasis={session.statusBasis} />
               <small>{session.currentActivity?.label ?? "No active tool"}</small>
             </div>
           </article>
