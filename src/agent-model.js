@@ -7,8 +7,6 @@ const STATUS_ALIASES = {
   completed: "complete",
 };
 
-export const SESSION_LEDGER_VISIBLE_ROWS = 5;
-
 const KNOWN_STATUSES = new Set([
   "needs_input",
   "blocked",
@@ -172,8 +170,32 @@ export function getRelativeTime(lastActivityAt, now = new Date()) {
   return `${Math.floor(seconds / 3600)}h ago`;
 }
 
+const KST_TIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Seoul",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
 export function formatTokenCount(value) {
-  return Number.isFinite(value) ? new Intl.NumberFormat("en-US").format(value) : "—";
+  return Number.isFinite(value)
+    ? new Intl.NumberFormat("en-US").format(Math.round(value))
+    : "—";
+}
+
+export function formatCostUsd(value) {
+  return Number.isFinite(value) && value >= 0 ? `$${value.toFixed(4)}` : "—";
+}
+
+export function formatPercent(value) {
+  return Number.isFinite(value) && value >= 0 ? `${Math.round(value)}%` : "—";
+}
+
+export function formatKstTime(value) {
+  if (value == null) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : `${KST_TIME_FORMAT.format(date)} KST`;
 }
 
 export function formatDuration(seconds) {

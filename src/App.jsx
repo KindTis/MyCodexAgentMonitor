@@ -32,13 +32,17 @@ import {
   TerminalWindow,
   UserFocus,
   WarningCircle,
+  X,
 } from "@phosphor-icons/react";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 
 import {
+  formatCostUsd,
   formatDuration,
   formatGoalStatus,
+  formatKstTime,
+  formatPercent,
   formatTokenCount,
   formatUtcTime,
   getDisplayedDuration,
@@ -49,7 +53,6 @@ import {
   getSnapshotChanges,
   getVisibleSessions,
   normalizeStatus,
-  SESSION_LEDGER_VISIBLE_ROWS,
   sortSessions,
 } from "./agent-model.js";
 
@@ -94,6 +97,13 @@ const EMPTY_SNAPSHOT = {
   connectionStatus: "syncing",
   errorCode: null,
   sessions: [],
+  usage: {
+    collectedAt: null,
+    todayTokens: null,
+    todayCostUsd: null,
+    fiveHourUsedPercent: null,
+    oneWeekUsedPercent: null,
+  },
 };
 
 function AgentMark({ item, size = 34, active = false, handoff = false }) {
@@ -156,49 +166,48 @@ function SessionRow({
   return (
     <button
       type="button"
-      role="row"
       className={`session-row session-row--${status} ${selected ? "session-row--selected" : ""} ${attention ? "session-row--attention" : ""}`}
       onClick={() => onSelect(session.id)}
-      aria-selected={selected}
+      aria-pressed={selected}
       aria-controls="session-detail"
       data-session-id={session.id}
     >
-      <span role="cell" className="session-agent">
-        <AgentMark item={session} />
+      <span className="session-agent">
+        <AgentMark item={session} size={28} />
         <span>
-          <strong>Codex</strong>
-          <small>Root agent</small>
+          <strong>{session.projectName ?? "Unknown project"}</strong>
+          <small>{session.gitBranch ?? "No Git branch"}</small>
         </span>
       </span>
-      <span role="cell" className="session-assignment">
+      <span className="session-assignment">
         <strong>{session.session}</strong>
         <small>{session.assignedWork || "No assigned work"}</small>
       </span>
-      <span role="cell" className="session-state">
+      <span className="session-state">
         <StatusBadge status={session.status} />
-        <small>
+        <small className="session-activity">
           {session.currentActivity?.label ?? "No active tool"}
           {relativeTime ? ` · ${relativeTime}` : ""}
         </small>
       </span>
-      <span role="cell" className="session-time">
+      <span className="session-time">
         <strong>{formatDuration(duration)}</strong>
         <small>Started {formatUtcTime(session.startedAt)}</small>
       </span>
-      <span role="cell">
+      <span className="session-skills">
         <MetaValue label="Skills">{metrics.skills || "—"}</MetaValue>
       </span>
-      <span role="cell">
+      <span className="session-tasks">
         <MetaValue label="Tasks">
           {metrics.tasks ? `${metrics.tasks.completed}/${metrics.tasks.total}` : "—"}
         </MetaValue>
       </span>
-      <span role="cell">
+      <span className="session-goal">
         <MetaValue label="Goal" accent={metrics.goalStatus === "active"}>
           {formatGoalStatus(session.goal?.status)}
         </MetaValue>
       </span>
-      <span role="cell" className="session-subagents">
+      <span className="session-subagents">
         <MetaValue
           key={changes.childIds.length ? `children-${collectedAt}` : "children"}
           label="Subagents"
@@ -209,7 +218,7 @@ function SessionRow({
             ? `${metrics.subagents.active}/${metrics.subagents.total}`
             : "0"}
         </MetaValue>
-        {selected ? <CaretDown size={16} /> : <CaretRight size={16} />}
+        <CaretRight className="session-direction" size={16} aria-hidden="true" />
       </span>
     </button>
   );
@@ -246,7 +255,140 @@ function TaskList({ plan, collectedAt, changedTasks = [] }) {
   );
 }
 
-function ChildAgents({
+function ChildAgentDialog({ child, onClose, collectedAt, clock }) {
+  const dialogRef = useRef(null);
+  const progress = getPlanProgress(child.plan);
+  const duration = getDisplayedDuration(child, collectedAt, clock);
+
+  useEffect(() => {
+    if (!dialogRef.current?.open) dialogRef.current?.showModal();
+  }, []);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      id="child-agent-dialog"
+      className="child-agent-dialog"
+      aria-labelledby="child-agent-dialog-title"
+      onClose={onClose}
+      onClick={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        if (
+          event.clientX < bounds.left
+          || event.clientX > bounds.right
+          || event.clientY < bounds.top
+          || event.clientY > bounds.bottom
+        ) {
+          event.currentTarget.close();
+        }
+      }}
+    >
+      <header className="child-dialog-heading">
+        <div className="detail-agent">
+          <AgentMark item={child} size={36} active={normalizeStatus(child.status) === "running"} />
+          <div>
+            <p>Child agent</p>
+            <h3 id="child-agent-dialog-title">
+              {child.agentNickname ?? child.threadId.slice(0, 8)}
+            </h3>
+          </div>
+        </div>
+        <div className="child-dialog-meta">
+          <StatusBadge status={child.status} />
+          <span>{formatDuration(duration)} session</span>
+          <button
+            type="button"
+            aria-label="Close child agent details"
+            onClick={() => dialogRef.current?.close()}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </header>
+
+      <div className="child-dialog-grid">
+        <article className="detail-card child-dialog-current">
+          <header className="card-header">
+            <span><Pulse size={16} /> Current work</span>
+            <code>{child.currentWork?.turnId ?? "No active turn"}</code>
+          </header>
+          {child.currentWork ? (
+            <h3>{child.currentWork.title || "No current work"}</h3>
+          ) : (
+            <p className="empty-copy">No active Turn was observed.</p>
+          )}
+          <div className="work-state">
+            <StatusBadge status={child.status} />
+            <small>{child.currentActivity?.label ?? "No active tool"}</small>
+          </div>
+        </article>
+
+        <article className="detail-card">
+          <header className="card-header">
+            <span><BracketsCurly size={16} /> Applied skills</span>
+            <b>{child.skills?.length ?? 0}</b>
+          </header>
+          {child.skills?.length ? (
+            <ul className="skill-chips">
+              {child.skills.map((skill) => <li key={skill}>{skill}</li>)}
+            </ul>
+          ) : (
+            <p className="empty-copy">No skills were observed for this Turn.</p>
+          )}
+        </article>
+
+        <article className="detail-card task-card">
+          <header className="card-header">
+            <span><CheckCircle size={16} /> Tasks</span>
+            <b>{progress.total ? `${progress.completed}/${progress.total}` : "Not used"}</b>
+          </header>
+          <TaskList plan={child.plan} collectedAt={collectedAt} />
+        </article>
+
+        <article className={`detail-card goal-card ${child.goal ? "" : "goal-card--empty"}`}>
+          <header className="card-header">
+            <span><Target size={16} /> Goal</span>
+            <b>{child.goal ? formatGoalStatus(child.goal.status) : "Not used"}</b>
+          </header>
+          {child.goal ? (
+            <>
+              <h3>{child.goal.objective}</h3>
+              <p>
+                Tokens {formatTokenCount(child.goal.tokensUsed)}
+                {" / "}
+                {formatTokenCount(child.goal.tokenBudget)}
+              </p>
+              <small>Time used · {formatDuration(child.goal.timeUsedSeconds)}</small>
+            </>
+          ) : (
+            <p className="empty-copy">This agent is not operating under a Goal.</p>
+          )}
+        </article>
+
+        <article className="detail-card activity-card">
+          <header className="card-header">
+            <span><Pulse size={16} /> Recent activity</span>
+            <b>UTC</b>
+          </header>
+          {child.activity?.length ? (
+            <ol className="activity-list">
+              {child.activity.map((activity) => (
+                <li key={activity.id} data-kind={activity.kind}>
+                  <time>{formatUtcTime(activity.at)}</time>
+                  <span>{activity.label}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="empty-copy">No recent tool activity was observed.</p>
+          )}
+        </article>
+      </div>
+    </dialog>
+  );
+}
+
+export function ChildAgents({
   children,
   selectedChildId,
   onSelect,
@@ -266,29 +408,23 @@ function ChildAgents({
         <div className="child-header" role="row">
           <span role="columnheader">Agent</span>
           <span role="columnheader">State</span>
-          <span role="columnheader">Session</span>
-          <span role="columnheader">Tokens</span>
-          <span role="columnheader">Skills</span>
+          <span role="columnheader">Session time</span>
           <span role="columnheader">Tasks</span>
           <span role="columnheader">Goal</span>
-          <span aria-hidden="true" />
         </div>
         {children.map((child) => {
           const isSelected = selectedChildId === child.id;
           const childStatus = normalizeStatus(child.status);
-          const relativeTime = getRelativeTime(child.lastActivityAt, new Date(clock));
           const progress = getPlanProgress(child.plan);
+          const duration = getDisplayedDuration(child, collectedAt, clock);
           const changed = changes.childIds.includes(child.id);
           const handoff = changes.handoffChildIds.includes(child.id) && childStatus === "complete";
 
           return (
-            <button
-              type="button"
+            <div
               className={`child-row ${isSelected ? "child-row--selected" : ""} ${handoff ? "child-row--handoff" : ""}`}
               role="row"
               key={changed ? `${child.id}-${collectedAt}` : child.id}
-              onClick={() => onSelect(isSelected ? null : child.id)}
-              aria-expanded={isSelected}
             >
               <span role="cell" className="child-agent">
                 <AgentMark
@@ -299,41 +435,34 @@ function ChildAgents({
                 />
                 <span>
                   <strong>{child.agentNickname ?? child.threadId.slice(0, 8)}</strong>
-                  <small>
-                    {child.agentRole ?? "Child agent"}
-                    {relativeTime ? ` · ${relativeTime}` : ""}
-                  </small>
+                  <small>{child.agentRole ?? "Child agent"}</small>
                 </span>
               </span>
               <span role="cell"><StatusBadge status={child.status} /></span>
-              <span role="cell" className="child-session">
-                <strong>{child.currentWork?.title || "No current work"}</strong>
-                <small>{child.currentActivity?.step ?? child.currentActivity?.label ?? "—"}</small>
-              </span>
-              <span role="cell">{formatTokenCount(child.tokens)}</span>
-              <span role="cell">{child.skills?.length || "—"}</span>
+              <span role="cell">{formatDuration(duration)}</span>
               <span role="cell">
                 {progress.total ? `${progress.completed}/${progress.total}` : "—"}
               </span>
               <span role="cell">{formatGoalStatus(child.goal?.status)}</span>
-              <span role="cell">
-                {isSelected ? <CaretDown size={14} /> : <CaretRight size={14} />}
-              </span>
-            </button>
+              <button
+                type="button"
+                className="child-row-action"
+                aria-label={`Open details for ${child.agentNickname ?? child.threadId.slice(0, 8)}`}
+                aria-haspopup="dialog"
+                aria-controls="child-agent-dialog"
+                onClick={() => onSelect(child.id)}
+              />
+            </div>
           );
         })}
       </div>
       {selectedChild && (
-        <div className="child-inspector" aria-live="polite">
-          <div>
-            <small>Current work</small>
-            <strong>{selectedChild.currentWork?.title || "No current work"}</strong>
-          </div>
-          <div>
-            <small>Skills in use</small>
-            <span>{selectedChild.skills?.join(" · ") || "No skills observed"}</span>
-          </div>
-        </div>
+        <ChildAgentDialog
+          child={selectedChild}
+          onClose={() => onSelect(null)}
+          collectedAt={collectedAt}
+          clock={clock}
+        />
       )}
     </>
   );
@@ -416,7 +545,7 @@ function SessionDetail({
       </header>
 
       <div className="detail-grid">
-        <div className="detail-column">
+        <div className="detail-column detail-column--work">
           <article className="detail-card current-work-card">
             <header className="card-header">
               <span><Pulse size={16} /> Current work</span>
@@ -432,90 +561,6 @@ function SessionDetail({
               <StatusBadge status={session.status} />
               <small>{session.currentActivity?.label ?? "No active tool"}</small>
             </div>
-          </article>
-
-          <article className="detail-card">
-            <header className="card-header">
-              <span><TerminalWindow size={16} /> Token usage</span>
-            </header>
-            <dl className="token-list">
-              {["total", "root", "children"].map((key) => (
-                <div key={key}>
-                  <dt>{key === "total" ? "Total" : key === "root" ? "Root agent" : "Child agents"}</dt>
-                  <dd
-                    key={changedTokenKeys.includes(key) ? `${key}-${collectedAt}` : key}
-                    className={changedTokenKeys.includes(key) ? "value-updated" : ""}
-                  >
-                    {formatTokenCount(session.tokens?.[key])}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </article>
-
-          <article className="detail-card">
-            <header className="card-header">
-              <span><BracketsCurly size={16} /> Applied skills</span>
-              <b>{session.skills?.length ?? 0}</b>
-            </header>
-            {session.skills?.length ? (
-              <ul className="skill-chips">
-                {session.skills.map((skill) => <li key={skill}>{skill}</li>)}
-              </ul>
-            ) : (
-              <p className="empty-copy">No skills were observed for this Turn.</p>
-            )}
-          </article>
-        </div>
-
-        <div className="detail-column">
-          <article className="detail-card task-card">
-            <header className="card-header">
-              <span><CheckCircle size={16} /> Tasks</span>
-              <b>{progress.total ? `${progress.completed}/${progress.total}` : "Not used"}</b>
-            </header>
-            <TaskList
-              plan={session.plan}
-              collectedAt={collectedAt}
-              changedTasks={changes.taskTitles}
-            />
-          </article>
-
-          <article className={`detail-card goal-card ${session.goal ? "" : "goal-card--empty"}`}>
-            <header className="card-header">
-              <span><Target size={16} /> Goal</span>
-              <b>{session.goal ? formatGoalStatus(session.goal.status) : "Not used"}</b>
-            </header>
-            {session.goal ? (
-              <>
-                <h3>{session.goal.objective}</h3>
-                <p>
-                  Tokens {formatTokenCount(session.goal.tokensUsed)}
-                  {" / "}
-                  {formatTokenCount(session.goal.tokenBudget)}
-                </p>
-                <small>Time used · {formatDuration(session.goal.timeUsedSeconds)}</small>
-              </>
-            ) : (
-              <p className="empty-copy">This session is not operating under a Goal.</p>
-            )}
-          </article>
-        </div>
-
-        <div className="detail-column detail-column--wide">
-          <article className="detail-card child-card">
-            <header className="card-header">
-              <span><GitBranch size={16} /> Child agents</span>
-              <b>{session.children?.length ?? 0}</b>
-            </header>
-            <ChildAgents
-              children={session.children ?? []}
-              selectedChildId={selectedChildId}
-              onSelect={onSelectChild}
-              clock={clock}
-              changes={changes}
-              collectedAt={collectedAt}
-            />
           </article>
 
           <article className="detail-card activity-card">
@@ -541,8 +586,121 @@ function SessionDetail({
             )}
           </article>
         </div>
+
+        <div className="detail-column detail-column--agents">
+          <article className={`detail-card goal-card ${session.goal ? "" : "goal-card--empty"}`}>
+            <header className="card-header">
+              <span><Target size={16} /> Goal</span>
+              <b>{session.goal ? formatGoalStatus(session.goal.status) : "Not used"}</b>
+            </header>
+            {session.goal ? (
+              <>
+                <h3>{session.goal.objective}</h3>
+                <p>
+                  Tokens {formatTokenCount(session.goal.tokensUsed)}
+                  {" / "}
+                  {formatTokenCount(session.goal.tokenBudget)}
+                </p>
+                <small>Time used · {formatDuration(session.goal.timeUsedSeconds)}</small>
+              </>
+            ) : (
+              <p className="empty-copy">This session is not operating under a Goal.</p>
+            )}
+          </article>
+
+          <article className="detail-card child-card">
+            <header className="card-header">
+              <span><GitBranch size={16} /> Child agents</span>
+              <b>{session.children?.length ?? 0}</b>
+            </header>
+            <ChildAgents
+              children={session.children ?? []}
+              selectedChildId={selectedChildId}
+              onSelect={onSelectChild}
+              clock={clock}
+              changes={changes}
+              collectedAt={collectedAt}
+            />
+          </article>
+        </div>
+
+        <div className="detail-column detail-column--planning">
+          <article className="detail-card task-card">
+            <header className="card-header">
+              <span><CheckCircle size={16} /> Tasks</span>
+              <b>{progress.total ? `${progress.completed}/${progress.total}` : "Not used"}</b>
+            </header>
+            <TaskList
+              plan={session.plan}
+              collectedAt={collectedAt}
+              changedTasks={changes.taskTitles}
+            />
+          </article>
+
+          <article className="detail-card">
+            <header className="card-header">
+              <span><BracketsCurly size={16} /> Applied skills</span>
+              <b>{session.skills?.length ?? 0}</b>
+            </header>
+            {session.skills?.length ? (
+              <ul className="skill-chips">
+                {session.skills.map((skill) => <li key={skill}>{skill}</li>)}
+              </ul>
+            ) : (
+              <p className="empty-copy">No skills were observed for this Turn.</p>
+            )}
+          </article>
+
+          <article className="detail-card">
+            <header className="card-header">
+              <span><TerminalWindow size={16} /> Token usage</span>
+            </header>
+            <dl className="token-list">
+              {["total", "root", "children"].map((key) => (
+                <div key={key}>
+                  <dt>{key === "total" ? "Total" : key === "root" ? "Root agent" : "Child agents"}</dt>
+                  <dd
+                    key={changedTokenKeys.includes(key) ? `${key}-${collectedAt}` : key}
+                    className={changedTokenKeys.includes(key) ? "value-updated" : ""}
+                  >
+                    {formatTokenCount(session.tokens?.[key])}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </article>
+        </div>
       </div>
     </section>
+  );
+}
+
+export function SystemSummary({
+  runningCount,
+  waitingCount,
+  sessionCount,
+  usage,
+  wallClock,
+  isLive,
+}) {
+  return (
+    <div className="system-summary">
+      <span>
+        <i className={`live-dot ${isLive ? "" : "live-dot--paused"}`} />
+        {runningCount} running {waitingCount} waiting {sessionCount} sessions
+      </span>
+      <span>
+        | Tokens {formatTokenCount(usage?.todayTokens)}
+        {" · "}
+        Cost {formatCostUsd(usage?.todayCostUsd)}
+      </span>
+      <span>
+        | 5H {formatPercent(usage?.fiveHourUsedPercent)}
+        {" · "}
+        1W {formatPercent(usage?.oneWeekUsedPercent)}
+      </span>
+      <time>| {formatKstTime(wallClock)}</time>
+    </div>
   );
 }
 
@@ -559,6 +717,7 @@ export function App() {
   const [sortState, setSortState] = useState({ key: "operational", direction: "asc" });
   const [isLive, setIsLive] = useState(true);
   const [clock, setClock] = useState(Date.now());
+  const [wallClock, setWallClock] = useState(Date.now());
   const latestSnapshot = useRef(EMPTY_SNAPSHOT);
   const appliedSnapshot = useRef(EMPTY_SNAPSHOT);
   const isLiveRef = useRef(true);
@@ -630,6 +789,11 @@ export function App() {
     const timer = window.setInterval(() => setClock(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [feedStatus.connectionStatus, isLive]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setWallClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (visibleSessions.some((session) => session.id === selectedSessionId)) return;
@@ -751,12 +915,14 @@ export function App() {
           </div>
         </div>
 
-        <div className="system-summary">
-          <span><i className={`live-dot ${isLive ? "" : "live-dot--paused"}`} /> {runningCount} running</span>
-          <span>{waitingCount} waiting</span>
-          <span>{visibleSessions.length} sessions</span>
-          <time>{formatUtcTime(new Date(clock).toISOString())} UTC</time>
-        </div>
+        <SystemSummary
+          runningCount={runningCount}
+          waitingCount={waitingCount}
+          sessionCount={visibleSessions.length}
+          usage={snapshot.usage}
+          wallClock={wallClock}
+          isLive={isLive}
+        />
       </header>
 
       <div className="page-content">
@@ -776,14 +942,41 @@ export function App() {
                 {isLive ? <Pulse size={12} /> : <PauseCircle size={12} />}
                 {isLive ? "Live" : "Paused"}
               </button>
-              <button
-                type="button"
-                className={`operational-sort ${sortState.key === "operational" ? "operational-sort--active" : ""}`}
-                onClick={() => setSortState({ key: "operational", direction: "asc" })}
-              >
+              <label className="sort-control">
                 <ArrowsDownUp size={12} />
-                {sortLabel}
-              </button>
+                <span className="visually-hidden">Sort sessions</span>
+                <select
+                  value={sortState.key}
+                  onChange={(event) => {
+                    const key = event.target.value;
+                    if (key === "operational") {
+                      setSortState({ key: "operational", direction: "asc" });
+                    } else {
+                      updateSort(sortColumns.find((column) => column.key === key));
+                    }
+                  }}
+                >
+                  <option value="operational">Operational order</option>
+                  {sortColumns.map((column) => (
+                    <option value={column.key} key={column.key}>{column.label}</option>
+                  ))}
+                </select>
+              </label>
+              {sortState.key !== "operational" && (
+                <button
+                  type="button"
+                  className="sort-direction"
+                  onClick={() => updateSort(
+                    sortColumns.find((column) => column.key === sortState.key),
+                  )}
+                  aria-label={`Reverse ${sortLabel}`}
+                  title={sortLabel}
+                >
+                  {sortState.direction === "asc"
+                    ? <CaretUp size={12} />
+                    : <CaretDown size={12} />}
+                </button>
+              )}
               <small className={`connection-state--${connectionStatus}`}>
                 {connectionLabel} · {feedAge || "waiting for first snapshot"}
               </small>
@@ -793,20 +986,15 @@ export function App() {
           <div className="ledger-scroll">
             <div
               className="session-ledger"
-              role="table"
               aria-label="Agent session overview"
               ref={ledgerRef}
             >
-              <div className="ledger-header" role="row">
+              <div className="ledger-header">
                 {sortColumns.map((column) => {
                   const active = sortState.key === column.key;
                   return (
                     <span
-                      role="columnheader"
                       key={column.key}
-                      aria-sort={active
-                        ? sortState.direction === "asc" ? "ascending" : "descending"
-                        : "none"}
                     >
                       <button type="button" onClick={() => updateSort(column)}>
                         {column.label}
@@ -820,11 +1008,7 @@ export function App() {
                   );
                 })}
               </div>
-              <div
-                className="session-list"
-                role="rowgroup"
-                style={{ "--visible-session-rows": SESSION_LEDGER_VISIBLE_ROWS }}
-              >
+              <div className="session-list">
                 {visibleSessions.map((session) => (
                   <SessionRow
                     key={session.id}

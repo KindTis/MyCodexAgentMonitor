@@ -2,8 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  formatCostUsd,
   formatDuration,
   formatGoalStatus,
+  formatKstTime,
+  formatPercent,
   formatTokenCount,
   formatUtcTime,
   getDisplayedDuration,
@@ -14,7 +17,6 @@ import {
   getSnapshotChanges,
   getVisibleSessions,
   normalizeStatus,
-  SESSION_LEDGER_VISIBLE_ROWS,
   sortSessions,
 } from "../src/agent-model.js";
 
@@ -23,7 +25,18 @@ test("서버의 원시 시간과 토큰을 표시 문자열로 바꾼다", () =>
   assert.equal(formatDuration(3605), "1:00:05");
   assert.equal(formatDuration(null), "—");
   assert.equal(formatTokenCount(112840), "112,840");
+  assert.equal(formatTokenCount(522555500.6), "522,555,501");
   assert.equal(formatTokenCount(null), "—");
+  assert.equal(formatCostUsd(369.26156), "$369.2616");
+  assert.equal(formatCostUsd(null), "—");
+  assert.equal(formatPercent(21.4), "21%");
+  assert.equal(formatPercent(106.2), "106%");
+  assert.equal(formatPercent(-1), "—");
+  assert.equal(
+    formatKstTime("2026-07-26T12:19:44.000Z"),
+    "21:19:44 KST",
+  );
+  assert.equal(formatKstTime(null), "—");
   assert.equal(formatGoalStatus("usageLimited"), "Usage limited");
   assert.equal(formatGoalStatus("unknown"), "—");
   assert.equal(formatUtcTime("2026-07-26T06:00:02.000Z"), "06:00:02");
@@ -237,17 +250,17 @@ test("formats relative snapshot age without inventing precision", () => {
   assert.equal(getRelativeTime(null, now), "");
 });
 
-test("keeps the session ledger viewport at five visible rows", () => {
-  assert.equal(SESSION_LEDGER_VISIBLE_ROWS, 5);
-});
-
-test("scrolls only enough to reveal a selected row outside the five-row viewport", () => {
+test("scrolls only enough to reveal a selected row in the rendered viewport", () => {
   assert.equal(
-    getRowScrollTop({ rowIndex: 5, rowHeight: 45, viewportHeight: 225, scrollTop: 0 }),
-    45,
+    getRowScrollTop({ rowIndex: 5, rowHeight: 130, viewportHeight: 650, scrollTop: 0 }),
+    130,
   );
   assert.equal(
-    getRowScrollTop({ rowIndex: 4, rowHeight: 45, viewportHeight: 225, scrollTop: 0 }),
+    getRowScrollTop({ rowIndex: 4, rowHeight: 130, viewportHeight: 650, scrollTop: 0 }),
     0,
+  );
+  assert.equal(
+    getRowScrollTop({ rowIndex: 7, rowHeight: 45, viewportHeight: 270, scrollTop: 45 }),
+    90,
   );
 });

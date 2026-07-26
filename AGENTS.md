@@ -26,6 +26,7 @@ Rules:
 - The product name is `My Codex Agent Monitor`; the in-page brand is `Orbital Dispatch`.
 - Use the dark operational-control design from `exec-4a03fc65-9b96-4d4a-8cc1-0d9b0e181e13.png`.
 - The top list must show agent, session/assigned work, state/current activity, session time, skills, task completion, Goal use, and active/total child agents.
+- Identify each root session in the top list by the final folder name of its `cwd` and its current Git branch; do not repeat fixed `Codex` or `Root agent` labels there.
 - The selected-session detail must show current work, tokens, skills, Plan Tasks, Goal, child agents, and recent activity.
 - Do not show invented progress percentages, Execution Trace, Plan Milestones, or generic KPI cards.
 - Show only root sessions in the top list. Show child agents only in the selected-session detail.
@@ -34,4 +35,10 @@ Rules:
 - `Live / Paused` controls snapshot application only; it does not stop agent work.
 - Session time is the session-wide accumulated root-agent working time. Count reasoning, planning, and tool execution; exclude user/approval waits and child-agent waits. Interpolate between snapshots only while the session is working and the live feed is connected.
 - Until the Codex App Server is connected, use deterministic simulated snapshots and label the state `Demo mode`.
-- Keep the session ledger at exactly five data rows excluding the header; scroll overflow inside the ledger.
+- On desktop, place the root-session list on the left and the selected-session detail on the right.
+- Size the desktop shell from minimum dimensions and let it grow with the browser. Let the session list consume the ledger's available height and scroll only its overflow; do not reserve a fixed number of rows.
+- Lay out desktop session cards in four bands: agent/state, assignment/session time, current activity, and padded metrics. Point the session caret toward the detail panel: right in the desktop master-detail layout and down in the stacked layout.
+- Give the three desktop detail columns a 35% / 35% / 30% balance. Split column 1 into Current work 40% / Recent activity 60%, column 2 into Goal 30% / Child agents 70%, and column 3 into Plan Tasks 60% / Applied skills 20% / Token usage 20%.
+- Do not make the whole selected-session detail an independent scroll area. Limit internal scrolling to long Plan Tasks, child-agent, and recent-activity lists.
+- Show Child Agents in five wrapping columns: agent name, state, session time, tasks, and Goal. Do not use horizontal scrolling or hover-revealed details.
+- Open a floating detail dialog when a child-agent row is clicked. Show current work, recent activity, applied skills, tasks, and Goal.
