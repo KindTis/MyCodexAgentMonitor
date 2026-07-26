@@ -3,14 +3,18 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import {
   appendFile,
+  mkdir,
   mkdtemp,
   rm,
+  stat,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
 import {
+  classifyChildSource,
   classifyToolCall,
+  discoverChildCandidates,
   IDLE_AFTER_MS,
   JsonlTailer,
   reduceThreadRecords,
@@ -69,11 +73,105 @@ function activeThread(turnId, overrides = {}) {
   };
 }
 
+function sessionMeta({
+  id,
+  parentThreadId,
+  timestamp,
+  source,
+  nickname = null,
+  role = null,
+}) {
+  return {
+    timestamp,
+    type: "session_meta",
+    payload: {
+      id,
+      session_id: id,
+      parent_thread_id: parentThreadId,
+      timestamp,
+      cwd: "C:\\repo",
+      source,
+      agent_nickname: nickname,
+      agent_role: role,
+    },
+  };
+}
+
 async function createTempRoot(t) {
   const root = await mkdtemp(path.join(tmpdir(), "codex-monitor-jsonl-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   return root;
 }
+
+test("최근 session_meta에서 spawn child를 찾고 guardian과 미분류를 구분한다", async (t) => {
+  const root = await createTempRoot(t);
+  const day = path.join(root, "sessions", "2026", "07", "26");
+  await mkdir(day, { recursive: true });
+  const records = [
+    sessionMeta({
+      id: "user-child",
+      parentThreadId: "root",
+      timestamp: "2026-07-26T06:00:01Z",
+      source: {
+        subagent: {
+          thread_spawn: {
+            parent_thread_id: "root",
+            depth: 1,
+            agent_path: "/root/reviewer",
+            agent_nickname: "Ada",
+            agent_role: null,
+          },
+        },
+      },
+      nickname: "Ada",
+    }),
+    sessionMeta({
+      id: "guardian",
+      parentThreadId: "root",
+      timestamp: "2026-07-26T06:00:02Z",
+      source: { subagent: { other: "guardian" } },
+    }),
+    sessionMeta({
+      id: "unknown",
+      parentThreadId: "root",
+      timestamp: "2026-07-26T06:00:03Z",
+      source: { subagent: { other: "future-kind" } },
+    }),
+  ];
+  const files = await Promise.all(records.map(async (record) => {
+    const file = path.join(day, `${record.payload.id}.jsonl`);
+    await writeFile(file, `${JSON.stringify(record)}\n{"private":"not-read"}\n`, "utf8");
+    return file;
+  }));
+
+  const candidates = await discoverChildCandidates({
+    codexHome: root,
+    parentThreadIds: ["root"],
+    updatedAfterMs: 0,
+  });
+
+  assert.deepEqual(
+    candidates.map(({ id }) => id).sort(),
+    ["guardian", "unknown", "user-child"],
+  );
+  const user = candidates.find(({ id }) => id === "user-child");
+  assert.equal(user.parentThreadId, "root");
+  assert.equal(user.agentNickname, "Ada");
+  assert.equal(classifyChildSource(user.source), "user");
+  assert.equal(classifyChildSource(candidates.find(({ id }) => id === "guardian").source), "guardian");
+  assert.equal(classifyChildSource(candidates.find(({ id }) => id === "unknown").source), "unknown");
+  assert.equal(classifyChildSource("subAgent"), "user");
+  assert.equal(classifyChildSource("subAgentOther"), "unknown");
+
+  const newestMtime = Math.max(...await Promise.all(
+    files.map(async (file) => (await stat(file)).mtimeMs),
+  ));
+  assert.deepEqual(await discoverChildCandidates({
+    codexHome: root,
+    parentThreadIds: ["root"],
+    updatedAfterMs: newestMtime + 1,
+  }), []);
+});
 
 test("CODEX_HOME을 우선하고 없으면 USERPROFILE 기본 경로를 사용한다", () => {
   assert.equal(

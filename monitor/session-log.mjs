@@ -1,5 +1,7 @@
 import * as fs from "node:fs/promises";
+import { createReadStream } from "node:fs";
 import path from "node:path";
+import { createInterface } from "node:readline";
 
 export const IDLE_AFTER_MS = 10 * 60 * 1000;
 
@@ -103,6 +105,90 @@ function parseJsonLine(line) {
     return [JSON.parse(line)];
   } catch {
     throw new SessionLogParseError();
+  }
+}
+
+export function classifyChildSource(source) {
+  if (["subAgent", "subAgentReview", "subAgentCompact", "subAgentThreadSpawn"].includes(source)) {
+    return "user";
+  }
+  if (source === "subAgentOther") return "unknown";
+  const subAgent = source?.subAgent ?? source?.subagent;
+  if (!subAgent) return "unknown";
+  if (subAgent.other === "guardian") return "guardian";
+  if (
+    subAgent.thread_spawn
+    || ["review", "compact", "memory_consolidation"].includes(subAgent)
+  ) return "user";
+  return "unknown";
+}
+
+export async function discoverChildCandidates({
+  codexHome,
+  parentThreadIds,
+  updatedAfterMs = 0,
+}) {
+  const parents = new Set(parentThreadIds);
+  if (!parents.size) return [];
+  const sessionsRoot = path.join(path.resolve(codexHome), "sessions");
+  let entries;
+  try {
+    entries = await fs.readdir(sessionsRoot, { recursive: true, withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+
+  const candidates = [];
+  // ponytail: 최근 파일만 stat하는 O(n) scan이다. 3초 수집이 측정상 느릴 때만 디렉터리 watermark를 추가한다.
+  for (const entry of entries) {
+    if (!entry.isFile() || path.extname(entry.name) !== ".jsonl") continue;
+    const filePath = path.join(entry.parentPath, entry.name);
+    const metadata = await fs.stat(filePath);
+    if (metadata.mtimeMs < updatedAfterMs) continue;
+    const record = await readFirstJsonRecord(filePath);
+    if (record?.type !== "session_meta") continue;
+
+    const payload = record.payload ?? {};
+    const spawn = payload.source?.subagent?.thread_spawn
+      ?? payload.source?.subAgent?.thread_spawn;
+    const parentThreadId = payload.parent_thread_id ?? spawn?.parent_thread_id ?? null;
+    if (!parents.has(parentThreadId)) continue;
+    const id = payload.id ?? payload.session_id;
+    if (!id) continue;
+    const createdAt = Date.parse(payload.timestamp ?? record.timestamp) / 1000;
+
+    candidates.push({
+      id,
+      sessionId: payload.session_id ?? id,
+      parentThreadId,
+      createdAt: Number.isFinite(createdAt) ? createdAt : metadata.birthtimeMs / 1000,
+      updatedAt: metadata.mtimeMs / 1000,
+      status: { type: "notLoaded" },
+      path: filePath,
+      cwd: payload.cwd ?? null,
+      source: payload.source ?? "unknown",
+      agentNickname: payload.agent_nickname ?? spawn?.agent_nickname ?? null,
+      agentRole: payload.agent_role ?? spawn?.agent_role ?? null,
+      name: null,
+      turns: [],
+    });
+  }
+  return candidates;
+}
+
+async function readFirstJsonRecord(filePath) {
+  const input = createReadStream(filePath, { encoding: "utf8" });
+  const lines = createInterface({ input, crlfDelay: Infinity });
+  try {
+    for await (const line of lines) {
+      const [record] = parseJsonLine(line);
+      if (record) return record;
+    }
+    return null;
+  } finally {
+    lines.close();
+    input.destroy();
   }
 }
 
