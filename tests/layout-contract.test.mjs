@@ -19,6 +19,24 @@ test("데스크톱 목록은 전체 너비의 25%를 사용한다", () => {
   );
 });
 
+test("데스크톱 상세 영역은 상태바를 제외한 뷰포트 높이 안에 머문다", () => {
+  const pageContent = declarations(".page-content");
+  assert.match(pageContent, /height: calc\(100dvh - 95px\)/);
+  assert.doesNotMatch(pageContent, /min-height: max\(/);
+
+  const detail = declarations(".session-detail");
+  assert.match(detail, /min-height: 0/);
+  assert.match(detail, /overflow: hidden/);
+});
+
+test("1180px 이하의 세로 적층 레이아웃은 데스크톱 높이 제한을 해제한다", () => {
+  const responsive = css.slice(
+    css.indexOf("@media (max-width: 1180px)"),
+    css.indexOf("@media (max-width: 1120px)"),
+  );
+  assert.match(declarations(".page-content", responsive), /height: auto/);
+});
+
 test("상세 DOM은 세 개 논리 열의 합의된 카드 순서를 유지한다", () => {
   const detail = app.slice(
     app.indexOf("function SessionDetail"),
