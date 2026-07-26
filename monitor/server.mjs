@@ -10,6 +10,11 @@ import {
   COLLECTION_INTERVAL_MS,
   SnapshotStore,
 } from "./snapshot-store.mjs";
+import {
+  collectUsage,
+  EMPTY_USAGE,
+  USAGE_COLLECTION_INTERVAL_MS,
+} from "./usage.mjs";
 
 export const HOST = "127.0.0.1";
 export const PORT = 4310;
@@ -82,11 +87,18 @@ export async function startMonitor({
   openBrowserFn = openBrowser,
   setTimeoutFn = setTimeout,
   clearTimeoutFn = clearTimeout,
+  collectUsageFn = collectUsage,
+  setIntervalFn = setInterval,
+  clearIntervalFn = clearInterval,
 } = {}) {
   let actualStore = store;
+  let usage = structuredClone(EMPTY_USAGE);
   const server = createMonitorServer({
     distDir,
-    snapshotProvider: () => actualStore?.snapshot ?? EMPTY_SNAPSHOT,
+    snapshotProvider: () => ({
+      ...(actualStore?.snapshot ?? EMPTY_SNAPSHOT),
+      usage: structuredClone(usage),
+    }),
   });
   await listen(server, { host, port });
 
@@ -107,7 +119,15 @@ export async function startMonitor({
   let stopped = false;
   let collectionTimer = null;
   let retryTimer = null;
+  let usageTimer = null;
   let retryAttempt = 0;
+
+  const collectUsageSnapshot = async () => {
+    if (stopped) return;
+    usage = await collectUsageFn({
+      readLimits: () => actualAppServer.readRateLimits(),
+    });
+  };
 
   const scheduleCollection = () => {
     if (stopped) return;
@@ -162,6 +182,13 @@ export async function startMonitor({
   };
 
   await startAppServer();
+  await collectUsageSnapshot();
+  if (!stopped) {
+    usageTimer = setIntervalFn(
+      collectUsageSnapshot,
+      USAGE_COLLECTION_INTERVAL_MS,
+    );
+  }
 
   return {
     server,
@@ -172,6 +199,7 @@ export async function startMonitor({
       stopped = true;
       if (collectionTimer != null) clearTimeoutFn(collectionTimer);
       if (retryTimer != null) clearTimeoutFn(retryTimer);
+      if (usageTimer != null) clearIntervalFn(usageTimer);
       await closeServer(server);
       await actualAppServer.stop();
     },

@@ -122,6 +122,13 @@ function snapshot({
   connectionStatus = "connected",
   errorCode = null,
   lastSuccessfulAt = "2026-07-26T06:00:00.000Z",
+  usage = {
+    collectedAt: "2026-07-26T06:00:00.000Z",
+    todayTokens: 522555501,
+    todayCostUsd: 369.2616,
+    fiveHourUsedPercent: 21,
+    oneWeekUsedPercent: 6,
+  },
 } = {}) {
   return {
     collectedAt: "2026-07-26T06:00:00.000Z",
@@ -129,7 +136,25 @@ function snapshot({
     connectionStatus,
     errorCode,
     sessions: [],
+    usage,
   };
+}
+
+const emptyUsage = {
+  collectedAt: null,
+  todayTokens: null,
+  todayCostUsd: null,
+  fiveHourUsedPercent: null,
+  oneWeekUsedPercent: null,
+};
+
+function startMonitorForTest(options) {
+  return startMonitor({
+    collectUsageFn: async () => structuredClone(emptyUsage),
+    setIntervalFn: () => 1,
+    clearIntervalFn() {},
+    ...options,
+  });
 }
 
 test("snapshot API와 정적 파일·HTML fallback을 안전하게 제공한다", async (t) => {
@@ -138,7 +163,15 @@ test("snapshot API와 정적 파일·HTML fallback을 안전하게 제공한다"
   let response = await fetch(`${running.url}/api/snapshot`);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "no-store");
-  assert.equal((await response.json()).connectionStatus, "connected");
+  const body = await response.json();
+  assert.equal(body.connectionStatus, "connected");
+  assert.deepEqual(body.usage, {
+    collectedAt: "2026-07-26T06:00:00.000Z",
+    todayTokens: 522555501,
+    todayCostUsd: 369.2616,
+    fiveHourUsedPercent: 21,
+    oneWeekUsedPercent: 6,
+  });
 
   response = await fetch(`${running.url}/assets/app.js`);
   assert.equal(response.status, 200);
@@ -171,7 +204,7 @@ test("점유된 4310 포트에서 App Server나 브라우저를 시작하지 않
   let browserCalls = 0;
 
   await assert.rejects(
-    startMonitor({
+    startMonitorForTest({
       distDir,
       appServer,
       store: createFakeStore([snapshot()]),
@@ -183,6 +216,66 @@ test("점유된 4310 포트에서 App Server나 브라우저를 시작하지 않
   assert.equal(appServer.starts, 0);
   assert.equal(appServer.stops, 0);
   assert.equal(browserCalls, 0);
+});
+
+test("사용량을 즉시 수집하고 10초마다 갱신해 세션 상태와 함께 제공한다", async (t) => {
+  const distDir = await createStaticFixture(t);
+  let interval;
+  let intervalCleared = false;
+  const usages = [
+    {
+      collectedAt: "2026-07-26T06:00:00.000Z",
+      todayTokens: 12,
+      todayCostUsd: 0.5,
+      fiveHourUsedPercent: 21,
+      oneWeekUsedPercent: 6,
+    },
+    {
+      collectedAt: "2026-07-26T06:00:10.000Z",
+      todayTokens: null,
+      todayCostUsd: null,
+      fiveHourUsedPercent: 22,
+      oneWeekUsedPercent: 6,
+    },
+  ];
+  const appServer = {
+    async start() {},
+    async stop() {},
+    async readRateLimits() {
+      throw new Error("the injected collector owns this test");
+    },
+  };
+  const runtime = await startMonitor({
+    distDir,
+    port: 0,
+    appServer,
+    store: createFakeStore([snapshot()]),
+    collectUsageFn: async () => structuredClone(usages.shift()),
+    setIntervalFn(callback, delay) {
+      interval = { callback, delay };
+      return 7;
+    },
+    clearIntervalFn(id) {
+      intervalCleared = id === 7;
+    },
+  });
+  t.after(() => runtime.close());
+
+  assert.equal(interval.delay, 10000);
+  let response = await fetch(`${runtime.url}/api/snapshot`);
+  let body = await response.json();
+  assert.equal(body.connectionStatus, "connected");
+  assert.equal(body.usage.todayTokens, 12);
+
+  await interval.callback();
+  response = await fetch(`${runtime.url}/api/snapshot`);
+  body = await response.json();
+  assert.equal(body.connectionStatus, "connected");
+  assert.equal(body.usage.todayTokens, null);
+  assert.equal(body.usage.fiveHourUsedPercent, 22);
+
+  await runtime.close();
+  assert.equal(intervalCleared, true);
 });
 
 test("SESSION_READ_FAILED는 같은 child와 정확히 하나의 3초 timer로 복구한다", async (t) => {
@@ -204,7 +297,7 @@ test("SESSION_READ_FAILED는 같은 child와 정확히 하나의 3초 timer로 �
   ]);
   let openedUrl = null;
 
-  const runtime = await startMonitor({
+  const runtime = await startMonitorForTest({
     distDir,
     port: 0,
     appServer,
@@ -245,7 +338,7 @@ test("APP_SERVER_UNAVAILABLE은 같은 client를 백오프로 재시작하고 �
     }),
     snapshot(),
   ]);
-  const runtime = await startMonitor({
+  const runtime = await startMonitorForTest({
     distDir,
     port: 0,
     appServer,
@@ -314,7 +407,7 @@ test("연속 App Server 실패를 1·2·4·5초로 재시도하고 같은 Store�
     codexHome: "C:\\Users\\dev\\.codex",
     now: () => nowMs,
   });
-  const runtime = await startMonitor({
+  const runtime = await startMonitorForTest({
     distDir,
     port: 0,
     appServer,
@@ -420,7 +513,7 @@ test("종료 뒤 진행 중 수집이 끝나도 새 timer를 예약하지 않는
     },
     markError() { return current; },
   };
-  const runtime = await startMonitor({
+  const runtime = await startMonitorForTest({
     distDir,
     port: 0,
     appServer,
