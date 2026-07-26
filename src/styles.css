@@ -177,16 +177,23 @@ time,
   box-shadow: 0 0 9px rgb(94 214 198 / 70%);
 }
 
-.connection-state--connected {
+.connection-state.connection-state--connected {
   color: var(--mint);
+  background: rgb(94 214 198 / 7%);
 }
 
-.connection-state--syncing {
+.connection-state.connection-state--syncing {
   color: var(--amber);
+  background: rgb(233 168 92 / 7%);
 }
 
-.connection-state--error {
+.connection-state.connection-state--error {
   color: var(--red);
+  background: rgb(239 142 121 / 7%);
+}
+
+.connection-state--syncing svg {
+  animation: spin 2.2s linear infinite;
 }
 
 .live-dot--paused {
@@ -316,9 +323,8 @@ time,
   padding: 0;
 }
 
-.feed-state small {
+.feed-state .connection-state {
   grid-column: 1 / -1;
-  color: var(--faint);
   font: inherit;
 }
 
@@ -767,12 +773,6 @@ time,
   letter-spacing: -0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.detail-agent h2 span {
-  margin: 0 6px;
-  color: #536970;
-  font-weight: 400;
 }
 
 .detail-meta {
@@ -1541,6 +1541,7 @@ time,
 
   .status-badge--running svg,
   .status-badge--waiting,
+  .connection-state--syncing svg,
   .session-row--running,
   .session-row--attention,
   .metric-value--updated strong,
@@ -1748,7 +1749,7 @@ time,
     font-size: 10px;
   }
 
-  .feed-state small {
+  .feed-state .connection-state {
     display: none;
   }
 

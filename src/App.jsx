@@ -78,6 +78,12 @@ const taskStatusMeta = {
   queued: { label: "Queued", icon: Clock },
 };
 
+const connectionStatusMeta = {
+  connected: { label: "Connected", icon: CheckCircle },
+  syncing: { label: "Syncing", icon: CircleNotch },
+  error: { label: "Error", icon: WarningCircle },
+};
+
 const sortColumns = [
   { key: "agent", label: "Agent", direction: "asc" },
   { key: "session", label: "Session & assigned work", direction: "asc" },
@@ -135,6 +141,18 @@ function StatusBadge({ status, statusBasis }) {
       <Icon size={13} weight={normalizedStatus === "complete" ? "fill" : "bold"} />
       {meta.label}
       {statusBasis === "inferred" && <small className="status-basis">추정</small>}
+    </span>
+  );
+}
+
+export function ConnectionState({ status, children }) {
+  const meta = connectionStatusMeta[status] ?? connectionStatusMeta.error;
+  const Icon = meta.icon;
+
+  return (
+    <span className={`status-badge connection-state connection-state--${status}`}>
+      <Icon size={13} weight={status === "connected" ? "fill" : "bold"} />
+      {meta.label} · {children}
     </span>
   );
 }
@@ -512,7 +530,7 @@ function LiveStep({ session, clock, collectedAt }) {
   );
 }
 
-function SessionDetail({
+export function SessionDetail({
   session,
   selectedChildId,
   onSelectChild,
@@ -532,8 +550,8 @@ function SessionDetail({
         <div className="detail-agent">
           <AgentMark item={session} size={42} />
           <div>
-            <p>Selected session</p>
-            <h2>Codex <span>/</span> {session.session}</h2>
+            <p>{session.gitBranch}</p>
+            <h2>{session.session}</h2>
           </div>
         </div>
         <div className="detail-meta">
@@ -968,11 +986,6 @@ export function App() {
   )
     ? feedStatus.connectionStatus
     : "error";
-  const connectionLabel = {
-    connected: "Connected",
-    syncing: "Syncing",
-    error: "Error",
-  }[connectionStatus];
   const feedAge = getRelativeTime(feedStatus.lastSuccessfulAt, new Date());
   const emptyChanges = {
     tokenKeys: [],
@@ -1055,9 +1068,9 @@ export function App() {
                     : <CaretDown size={12} />}
                 </button>
               )}
-              <small className={`connection-state--${connectionStatus}`}>
-                {connectionLabel} · {feedAge || "waiting for first snapshot"}
-              </small>
+              <ConnectionState status={connectionStatus}>
+                {feedAge || "waiting for first snapshot"}
+              </ConnectionState>
             </div>
           </header>
 
@@ -1122,9 +1135,7 @@ export function App() {
       </div>
 
       <footer className="page-footer">
-        <span className={`connection-state--${connectionStatus}`}>
-          {connectionLabel} · local Codex snapshot
-        </span>
+        <ConnectionState status={connectionStatus}>local Codex snapshot</ConnectionState>
         <span>Session event time shown in UTC</span>
       </footer>
 
