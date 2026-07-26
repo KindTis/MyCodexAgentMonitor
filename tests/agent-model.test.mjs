@@ -6,6 +6,7 @@ import {
   formatGoalStatus,
   formatTokenCount,
   formatUtcTime,
+  getDisplayedDuration,
   getPlanProgress,
   getRelativeTime,
   getRowScrollTop,
@@ -27,6 +28,18 @@ test("서버의 원시 시간과 토큰을 표시 문자열로 바꾼다", () =>
   assert.equal(formatGoalStatus("unknown"), "—");
   assert.equal(formatUtcTime("2026-07-26T06:00:02.000Z"), "06:00:02");
   assert.equal(formatUtcTime(null), "—");
+});
+
+test("연결된 Live 작업 시간만 snapshot 사이 경과 시간을 보간한다", () => {
+  const session = { durationSeconds: 12, isWorking: true };
+  const collectedAt = "2026-07-26T06:00:00Z";
+  const nowMs = Date.parse("2026-07-26T06:00:02.900Z");
+
+  assert.equal(getDisplayedDuration(session, collectedAt, nowMs), 14);
+  assert.equal(
+    getDisplayedDuration({ ...session, isWorking: false }, collectedAt, nowMs),
+    12,
+  );
 });
 
 test("직전 snapshot과 달라진 토큰·Plan·child·활동만 표시한다", () => {

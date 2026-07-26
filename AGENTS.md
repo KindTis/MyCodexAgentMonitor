@@ -32,5 +32,6 @@ Rules:
 - Default order is attention needed, running, waiting, planning, inactive, complete, with recent activity first inside a group.
 - Use restrained state motion, Live step, relative activity time, token/task updates, and handoff feedback to convey active work.
 - `Live / Paused` controls snapshot application only; it does not stop agent work.
+- Session time is the session-wide accumulated root-agent working time. Count reasoning, planning, and tool execution; exclude user/approval waits and child-agent waits. Interpolate between snapshots only while the session is working and the live feed is connected.
 - Until the Codex App Server is connected, use deterministic simulated snapshots and label the state `Demo mode`.
 - Keep the session ledger at exactly five data rows excluding the header; scroll overflow inside the ledger.

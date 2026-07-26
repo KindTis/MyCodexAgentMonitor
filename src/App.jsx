@@ -41,6 +41,7 @@ import {
   formatGoalStatus,
   formatTokenCount,
   formatUtcTime,
+  getDisplayedDuration,
   getPlanProgress,
   getRelativeTime,
   getRowScrollTop,
@@ -138,10 +139,18 @@ function MetaValue({ label, children, accent = false, updated = false }) {
   );
 }
 
-function SessionRow({ session, selected, onSelect, clock, changes, collectedAt }) {
+function SessionRow({
+  session,
+  selected,
+  onSelect,
+  clock,
+  changes,
+  collectedAt,
+}) {
   const metrics = getSessionMetrics(session);
   const status = normalizeStatus(session.status);
   const relativeTime = getRelativeTime(session.lastActivityAt, new Date(clock));
+  const duration = getDisplayedDuration(session, collectedAt, clock);
   const attention = ["needs_input", "blocked", "failed"].includes(status);
 
   return (
@@ -173,7 +182,7 @@ function SessionRow({ session, selected, onSelect, clock, changes, collectedAt }
         </small>
       </span>
       <span role="cell" className="session-time">
-        <strong>{formatDuration(session.durationSeconds)}</strong>
+        <strong>{formatDuration(duration)}</strong>
         <small>Started {formatUtcTime(session.startedAt)}</small>
       </span>
       <span role="cell">
@@ -382,6 +391,7 @@ function SessionDetail({
 }) {
   const progress = getPlanProgress(session.plan);
   const relativeTime = getRelativeTime(session.lastActivityAt, new Date(clock));
+  const duration = getDisplayedDuration(session, collectedAt, clock);
   const changedTokenKeys = changes.tokenKeys;
 
   return (
@@ -396,7 +406,7 @@ function SessionDetail({
         </div>
         <div className="detail-meta">
           <StatusBadge status={session.status} />
-          <span>{formatDuration(session.durationSeconds)} session</span>
+          <span>{formatDuration(duration)} session</span>
           <span>Last update {relativeTime || "unavailable"}</span>
           <button type="button" onClick={onOpenCodex}>
             <ArrowSquareOut size={14} />
@@ -591,12 +601,14 @@ export function App() {
         if (!response.ok) throw new Error("Snapshot request failed");
         const next = await response.json();
         if (cancelled) return;
-        latestSnapshot.current = next;
         setFeedStatus({
           connectionStatus: next.connectionStatus,
           lastSuccessfulAt: next.lastSuccessfulAt,
         });
-        if (isLiveRef.current) applySnapshot(next);
+        if (next.connectionStatus !== "error") {
+          latestSnapshot.current = next;
+          if (isLiveRef.current) applySnapshot(next);
+        }
       } catch {
         if (!cancelled) {
           setFeedStatus((current) => ({ ...current, connectionStatus: "error" }));
@@ -614,10 +626,10 @@ export function App() {
   }, [applySnapshot]);
 
   useEffect(() => {
-    if (!isLive) return undefined;
+    if (!isLive || feedStatus.connectionStatus !== "connected") return undefined;
     const timer = window.setInterval(() => setClock(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [isLive]);
+  }, [feedStatus.connectionStatus, isLive]);
 
   useEffect(() => {
     if (visibleSessions.some((session) => session.id === selectedSessionId)) return;
@@ -693,7 +705,9 @@ export function App() {
     const next = !isLiveRef.current;
     isLiveRef.current = next;
     setIsLive(next);
-    if (next) applySnapshot(latestSnapshot.current);
+    if (next && feedStatus.connectionStatus === "connected") {
+      applySnapshot(latestSnapshot.current);
+    }
   };
 
   const updateSort = (column) => {

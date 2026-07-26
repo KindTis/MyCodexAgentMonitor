@@ -137,19 +137,27 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
     ?? null;
   let observation = previous?.turnId === targetTurnId
     ? structuredClone(previous)
-    : createObservation(targetTurnId, latestTurn);
+    : createObservation(targetTurnId, latestTurn, previous);
   observation.pendingCalls ??= {};
   observation.activity ??= [];
   observation.skills ??= [];
+  observation.workingMilliseconds ??= 0;
+  observation.workingSince ??= null;
+  observation.workingPauseCalls ??= {};
+  observation.workingRecordKeys ??= {};
+  if (!previous && records.length === 0 && thread.path == null) {
+    observation.workingMilliseconds = getThreadWorkingMilliseconds(thread);
+  }
 
   let activeTurnId = previous?.turnId ?? targetTurnId;
   for (const record of records) {
     const payload = record.payload ?? {};
+    applyWorkingRecord(observation, record);
 
     if (record.type === "event_msg" && payload.type === "task_started") {
       activeTurnId = payload.turn_id ?? targetTurnId;
       if (activeTurnId !== targetTurnId) continue;
-      observation = createObservation(targetTurnId, latestTurn);
+      observation = createObservation(targetTurnId, latestTurn, observation);
       observation.startedAt = toIso(payload.started_at ?? record.timestamp)
         ?? observation.startedAt;
       touch(observation, record.timestamp ?? payload.started_at);
@@ -166,18 +174,20 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
 
   const turn = thread.turns?.find(({ id }) => id === targetTurnId) ?? latestTurn;
   applyTurnItems(observation, turn);
-  applyTurnTerminalState(observation, turn);
+  applyTurnTerminalState(observation, thread, turn);
   observation.currentActivity = getCurrentActivity(observation.pendingCalls);
   observation.status = getStatus(observation, thread, turn, nowMs);
+  observation.isWorking = getIsWorking(observation, thread);
+  syncWorkingClock(observation, nowMs, previous == null);
   observation.activity = observation.activity
     .filter((item, index, items) => items.findIndex(({ id }) => id === item.id) === index)
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .slice(0, 4);
-  observation.durationSeconds = getDurationSeconds(observation, nowMs, turn);
+  observation.durationSeconds = getDurationSeconds(observation, nowMs);
   return observation;
 }
 
-function createObservation(turnId, turn) {
+function createObservation(turnId, turn, previous = null) {
   const startedAt = toIso(turn?.startedAt);
   return {
     turnId,
@@ -194,6 +204,11 @@ function createObservation(turnId, turn) {
     activity: [],
     pendingCalls: {},
     terminalStatus: null,
+    workingMilliseconds: previous?.workingMilliseconds ?? 0,
+    workingSince: previous?.workingSince ?? null,
+    workingPauseCalls: structuredClone(previous?.workingPauseCalls ?? {}),
+    workingRecordKeys: structuredClone(previous?.workingRecordKeys ?? {}),
+    isWorking: false,
   };
 }
 
@@ -284,6 +299,57 @@ function applyResponseRecord(observation, record) {
   }
 }
 
+function applyWorkingRecord(observation, record) {
+  const payload = record.payload ?? {};
+  if (record.type === "event_msg") {
+    if (payload.type === "task_started") {
+      if (!claimWorkingRecord(observation, record)) return;
+      observation.workingPauseCalls = {};
+      startWorking(observation, payload.started_at ?? record.timestamp);
+    } else if (
+      payload.type === "task_complete"
+      || ["cancelled", "stopped"].includes(payload.status)
+    ) {
+      if (!claimWorkingRecord(observation, record)) return;
+      stopWorking(observation, payload.completed_at ?? record.timestamp);
+    }
+    return;
+  }
+  if (record.type !== "response_item") return;
+
+  if (payload.type === "function_call" || payload.type === "custom_tool_call") {
+    const name = payload.name ?? payload.tool_name ?? "";
+    const leaf = name.split(".").at(-1);
+    if (!["request_user_input", "wait_agent"].includes(leaf)) return;
+    if (!claimWorkingRecord(observation, record)) return;
+    const callId = payload.call_id ?? payload.id;
+    observation.workingPauseCalls[callId] = true;
+    stopWorking(observation, record.timestamp);
+    return;
+  }
+  if (
+    payload.type !== "function_call_output"
+    && payload.type !== "custom_tool_call_output"
+  ) return;
+  if (!observation.workingPauseCalls[payload.call_id]) return;
+  if (!claimWorkingRecord(observation, record)) return;
+
+  delete observation.workingPauseCalls[payload.call_id];
+  if (!Object.keys(observation.workingPauseCalls).length) {
+    startWorking(observation, record.timestamp);
+  }
+}
+
+// ponytail: Turn·대기 사건 키만 보존한다. 장기 세션에서 메모리가 문제일 때 watermark로 교체한다.
+function claimWorkingRecord(observation, record) {
+  const payload = record.payload ?? {};
+  const identity = payload.call_id ?? payload.id ?? payload.turn_id ?? payload.status ?? "";
+  const key = `${record.timestamp}|${record.type}|${payload.type}|${identity}`;
+  if (observation.workingRecordKeys[key]) return false;
+  observation.workingRecordKeys[key] = true;
+  return true;
+}
+
 function parseArguments(value) {
   if (value && typeof value === "object") return value;
   if (typeof value !== "string") return {};
@@ -321,10 +387,12 @@ function getCurrentActivity(pendingCalls) {
     : null;
 }
 
-function applyTurnTerminalState(observation, turn) {
+function applyTurnTerminalState(observation, thread, turn) {
   if (!turn) return;
   if (turn.status === "failed") observation.terminalStatus = "failed";
-  if (turn.status === "interrupted") observation.terminalStatus = "stopped";
+  if (turn.status === "interrupted" && thread.status?.type !== "notLoaded") {
+    observation.terminalStatus = "stopped";
+  }
   if (["cancelled", "stopped"].includes(turn.status)) {
     observation.terminalStatus = turn.status;
   }
@@ -352,7 +420,9 @@ function getStatus(observation, thread, turn, nowMs) {
   if (["cancelled", "stopped"].includes(observation.terminalStatus)) {
     return observation.terminalStatus;
   }
-  if (turn?.status === "interrupted") return "stopped";
+  if (turn?.status === "interrupted" && thread.status?.type !== "notLoaded") {
+    return "stopped";
+  }
   if (calls.some(({ name }) => ["wait", "wait_agent"].includes(name.split(".").at(-1)))) {
     return "waiting";
   }
@@ -364,17 +434,71 @@ function getStatus(observation, thread, turn, nowMs) {
   return "running";
 }
 
-function getDurationSeconds(observation, nowMs, turn) {
-  if (Number.isFinite(turn?.durationMs) && observation.terminalStatus) {
-    return Math.max(0, Math.floor(turn.durationMs / 1000));
+function getDurationSeconds(observation, nowMs) {
+  const workingSince = Date.parse(observation.workingSince);
+  const activeMilliseconds = Number.isNaN(workingSince)
+    ? 0
+    : Math.max(0, nowMs - workingSince);
+  return Math.floor((observation.workingMilliseconds + activeMilliseconds) / 1000);
+}
+
+function getIsWorking(observation, thread) {
+  const flags = thread.status?.activeFlags ?? [];
+  if (
+    flags.includes("waitingOnApproval")
+    || flags.includes("waitingOnUserInput")
+    || Object.keys(observation.workingPauseCalls).length
+  ) return false;
+  return ["running", "planning", "waiting"].includes(observation.status);
+}
+
+function syncWorkingClock(observation, nowMs, initial) {
+  // ponytail: activeFlags 자체에는 시각이 없어 pending 시작 시각을 쓰고, 없으면 수집 시각을 쓴다.
+  if (observation.isWorking) {
+    startWorking(
+      observation,
+      initial
+        ? observation.lastActivityAt ?? observation.startedAt ?? nowMs / 1000
+        : nowMs / 1000,
+    );
+    return;
   }
-  const startedAt = Date.parse(observation.startedAt);
-  if (Number.isNaN(startedAt)) return null;
-  const endedAt = Date.parse(observation.endedAt);
-  return Math.max(
-    0,
-    Math.floor(((Number.isNaN(endedAt) ? nowMs : endedAt) - startedAt) / 1000),
-  );
+  const stoppedAt = observation.endedAt
+    ?? (observation.status === "idle" ? observation.lastActivityAt : null)
+    ?? (observation.status === "needs_input" ? observation.currentActivity?.startedAt : null)
+    ?? nowMs / 1000;
+  stopWorking(observation, stoppedAt);
+}
+
+function startWorking(observation, value) {
+  if (observation.workingSince || Object.keys(observation.workingPauseCalls).length) return;
+  observation.workingSince = toIso(value);
+}
+
+function stopWorking(observation, value) {
+  const startedAt = Date.parse(observation.workingSince);
+  const stoppedAt = Date.parse(toIso(value));
+  if (!Number.isNaN(startedAt) && !Number.isNaN(stoppedAt)) {
+    observation.workingMilliseconds += Math.max(0, stoppedAt - startedAt);
+  }
+  observation.workingSince = null;
+}
+
+function getThreadWorkingMilliseconds(thread) {
+  return (thread.turns ?? []).reduce((total, turn) => {
+    const interrupted = turn.status === "interrupted";
+    const terminal = ["completed", "complete", "failed", "cancelled", "stopped"].includes(
+      turn.status,
+    ) || (interrupted && thread.status?.type !== "notLoaded");
+    if (!terminal) return total;
+    if (Number.isFinite(turn.durationMs)) return total + Math.max(0, turn.durationMs);
+
+    const startedAt = Number.isFinite(turn.startedAt) ? turn.startedAt * 1000 : Number.NaN;
+    const completedAt = Number.isFinite(turn.completedAt) ? turn.completedAt * 1000 : Number.NaN;
+    return Number.isFinite(startedAt) && Number.isFinite(completedAt)
+      ? total + Math.max(0, completedAt - startedAt)
+      : total;
+  }, 0);
 }
 
 function touch(observation, value) {

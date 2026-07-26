@@ -5,8 +5,8 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1784989448.6850438,
-    "ast_hash": "e81cb535471c65c3fde0ac1c4024f133",
+    "mtime": 1785044145.5239947,
+    "ast_hash": "916a68ef04c1475d4b2a365230c87c26",
     "semantic_hash": ""
   },
   "CODEX_AGENT_STATUS.md": {
@@ -35,8 +35,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1785002727.7747967,
-    "ast_hash": "02c95283943de8c11e67c3fadc675546",
+    "mtime": 1785042423.2888312,
+    "ast_hash": "0069c1a11bd040ea78548472863dfcad",
     "semantic_hash": ""
   },
   "scripts/prepare-sites-build.mjs": {
@@ -45,13 +45,13 @@
     "semantic_hash": ""
   },
   "src/App.jsx": {
-    "mtime": 1785003467.423817,
-    "ast_hash": "f8f2006a4529fcdc3028e1e3b4d8808f",
+    "mtime": 1785045232.4651463,
+    "ast_hash": "c248675f6713c234cc6d6e2010d120ec",
     "semantic_hash": ""
   },
   "src/agent-model.js": {
-    "mtime": 1785003490.989687,
-    "ast_hash": "1b7ec28d963342b25df8779c2dd73ec3",
+    "mtime": 1785045232.4641407,
+    "ast_hash": "a7d48f00227c3d51f5617ca4ca15d192",
     "semantic_hash": ""
   },
   "src/main.jsx": {
@@ -60,13 +60,13 @@
     "semantic_hash": ""
   },
   "tests/agent-model.test.mjs": {
-    "mtime": 1785003490.9907062,
-    "ast_hash": "767acdb90113a88d39d66ccb959ca00d",
+    "mtime": 1785045232.4651463,
+    "ast_hash": "626fa7da2f1c5f55401853c6cde070a5",
     "semantic_hash": ""
   },
   "tests/app-identity.test.mjs": {
-    "mtime": 1785003247.9367254,
-    "ast_hash": "06258ef4647c8e4c6591f3df9d27aee4",
+    "mtime": 1785042423.2950275,
+    "ast_hash": "15f48074c07c70fad8099dba573f3b3a",
     "semantic_hash": ""
   },
   "tests/sites-worker.test.mjs": {
@@ -245,43 +245,43 @@
     "semantic_hash": ""
   },
   "monitor/app-server-client.mjs": {
-    "mtime": 1785001728.3714862,
-    "ast_hash": "8ecd2ad9e601bba0c5bd9e8cd9a3eb42",
+    "mtime": 1785042423.2858262,
+    "ast_hash": "ca6014cd9abca48130972117fa69916f",
     "semantic_hash": ""
   },
   "monitor/server.mjs": {
-    "mtime": 1785002727.77347,
-    "ast_hash": "7510e916d4573381c94f67a53f047404",
+    "mtime": 1785042423.286824,
+    "ast_hash": "02514d5a9e6c38e15deef43d0e8fe222",
     "semantic_hash": ""
   },
   "monitor/session-log.mjs": {
-    "mtime": 1785004928.8566992,
-    "ast_hash": "be2556c0b5e4cd37437541c59f0fee5c",
+    "mtime": 1785045494.87886,
+    "ast_hash": "fc32de938ba9765bbc5429fcdd854e5b",
     "semantic_hash": ""
   },
   "monitor/snapshot-store.mjs": {
-    "mtime": 1785004928.8577063,
-    "ast_hash": "99394887bf99c002b3ee6279f51feec1",
+    "mtime": 1785044352.1602983,
+    "ast_hash": "519568541bd47c0f5c053236a6d39640",
     "semantic_hash": ""
   },
   "tests/app-server-client.test.mjs": {
-    "mtime": 1785001680.638648,
-    "ast_hash": "cb86ee2dda4463e3fd9682719860bb06",
+    "mtime": 1785042423.2950275,
+    "ast_hash": "8678c1d74bccece5fcc9bf0dd8918386",
     "semantic_hash": ""
   },
   "tests/monitor-server.test.mjs": {
-    "mtime": 1785004911.3877707,
-    "ast_hash": "139029406cc6f3926f564ee11879fb43",
+    "mtime": 1785042423.2960315,
+    "ast_hash": "c7ddb4a56aee3a615b0ed6344953ae28",
     "semantic_hash": ""
   },
   "tests/session-log.test.mjs": {
-    "mtime": 1785004905.849437,
-    "ast_hash": "786c69763377c7c8ee9ef550b75ab64b",
+    "mtime": 1785045388.6661098,
+    "ast_hash": "b95b6b2002a1f46c06833887ecb33a15",
     "semantic_hash": ""
   },
   "tests/snapshot-store.test.mjs": {
-    "mtime": 1785004905.8505325,
-    "ast_hash": "2bc2da9c6b28ac79d9834ab2187c3102",
+    "mtime": 1785044341.9053369,
+    "ast_hash": "ed7229e8b908f73737defff8ce818e40",
     "semantic_hash": ""
   },
   "README.md": {
@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "docs/implementation/2026-07-26-local-codex-live-monitor-implementation-map.md": {
-    "mtime": 1785004109.1083043,
-    "ast_hash": "93f0ef85c32e9f8708ab1a7dad1417fd",
+    "mtime": 1785042423.2778487,
+    "ast_hash": "a3af1483a636602735fedf8d5f93cccd",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-26-local-codex-live-monitor.md": {
@@ -300,8 +300,13 @@
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-07-26-local-codex-live-monitor-design.md": {
-    "mtime": 1784994032.2319803,
-    "ast_hash": "08c4657b5dc4a0c0b4cd1fd407271e58",
+    "mtime": 1785044145.5250401,
+    "ast_hash": "fa3280b126c1605eda05fba75ffaa4a6",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-26-session-working-time.md": {
+    "mtime": 1785045543.607183,
+    "ast_hash": "96e58f34fe754d8c765f9aa30e741eba",
     "semantic_hash": ""
   }
 }

@@ -224,6 +224,7 @@ test("도구 결과가 오면 Waiting과 Planning을 해제하고 Plan은 유지
     Date.parse("2026-07-26T06:00:04Z"),
   );
   assert.equal(result.status, "running");
+  assert.equal(result.isWorking, true);
   assert.equal(result.currentActivity, null);
 
   result = reduceThreadRecords(
@@ -284,6 +285,8 @@ test("미해결 사용자 입력만 needs_input이고 질문·응답 본문은 �
     Date.parse("2026-07-26T06:00:01Z"),
   );
   assert.equal(nextTurn.status, "running");
+  assert.equal(nextTurn.isWorking, true);
+  assert.equal(nextTurn.durationSeconds, 2);
 });
 
 test("activeFlags와 terminal Turn 상태를 우선하고 종료 시각에서 duration을 멈춘다", () => {
@@ -296,6 +299,23 @@ test("activeFlags와 terminal Turn 상태를 우선하고 종료 시각에서 du
     Date.parse("2026-07-26T06:00:10Z"),
   );
   assert.equal(waiting.status, "needs_input");
+  assert.equal(waiting.isWorking, false);
+
+  let resumed = reduceThreadRecords(
+    waiting,
+    [],
+    activeThread("turn-1"),
+    Date.parse("2026-07-26T06:00:20Z"),
+  );
+  assert.equal(resumed.isWorking, true);
+  assert.equal(resumed.durationSeconds, 0);
+  resumed = reduceThreadRecords(
+    resumed,
+    [],
+    activeThread("turn-1"),
+    Date.parse("2026-07-26T06:00:25Z"),
+  );
+  assert.equal(resumed.durationSeconds, 5);
 
   const failed = reduceThreadRecords(
     null,
@@ -324,6 +344,123 @@ test("activeFlags와 terminal Turn 상태를 우선하고 종료 시각에서 du
   );
   assert.equal(interrupted.status, "stopped");
   assert.equal(interrupted.durationSeconds, 5);
+});
+
+test("승인 대기는 pending 도구가 시작된 시각부터 작업 시간에서 제외한다", () => {
+  const waiting = reduceThreadRecords(
+    null,
+    [
+      event("2026-07-26T06:00:00Z", "task_started", { turn_id: "turn-1" }),
+      toolCall("2026-07-26T06:00:05Z", "shell_command", "{}", "approval-call"),
+    ],
+    activeThread("turn-1", {
+      status: { type: "active", activeFlags: ["waitingOnApproval"] },
+    }),
+    Date.parse("2026-07-26T06:00:10Z"),
+  );
+
+  assert.equal(waiting.status, "needs_input");
+  assert.equal(waiting.isWorking, false);
+  assert.equal(waiting.durationSeconds, 5);
+});
+
+test("notLoaded Thread의 interrupted Turn은 최신 JSONL 활동이 있으면 Running을 유지한다", () => {
+  const result = reduceThreadRecords(
+    null,
+    [
+      event("2026-07-26T06:00:00Z", "task_started", { turn_id: "turn-1" }),
+      event("2026-07-26T06:00:05Z", "token_count", {
+        info: { total_token_usage: { total_tokens: 10 } },
+      }),
+    ],
+    activeThread("turn-1", {
+      status: { type: "notLoaded" },
+      turn: { status: "interrupted" },
+    }),
+    Date.parse("2026-07-26T06:00:06Z"),
+  );
+
+  assert.equal(result.status, "running");
+  assert.equal(result.isWorking, true);
+  assert.equal(result.durationSeconds, 6);
+  assert.equal(result.endedAt, null);
+});
+
+test("모든 Turn의 작업 시간을 누적하고 사용자 입력과 child 대기만 제외한다", () => {
+  const result = reduceThreadRecords(
+    null,
+    [
+      event("2026-07-26T06:00:00Z", "task_started", { turn_id: "turn-1" }),
+      toolCall("2026-07-26T06:00:02Z", "wait_agent", "{}", "child-wait"),
+      toolOutput("2026-07-26T06:00:05Z", "child-wait"),
+      event("2026-07-26T06:00:08Z", "task_complete", { turn_id: "turn-1" }),
+      event("2026-07-26T06:00:20Z", "task_started", { turn_id: "turn-2" }),
+      toolCall("2026-07-26T06:00:22Z", "request_user_input", "{}", "user-wait"),
+      toolOutput("2026-07-26T06:00:30Z", "user-wait"),
+      toolCall("2026-07-26T06:00:31Z", "wait", "{}", "tool-wait"),
+      toolOutput("2026-07-26T06:00:34Z", "tool-wait"),
+    ],
+    activeThread("turn-2", {
+      turn: { startedAt: unix("2026-07-26T06:00:20Z") },
+    }),
+    Date.parse("2026-07-26T06:00:35Z"),
+  );
+
+  assert.equal(result.status, "running");
+  assert.equal(result.isWorking, true);
+  assert.equal(result.durationSeconds, 12);
+});
+
+test("증분 수집에서 새 Turn으로 전환해도 이전 작업 시간을 유지한다", () => {
+  let result = reduceThreadRecords(
+    null,
+    [event("2026-07-26T06:00:00Z", "task_started", { turn_id: "turn-1" })],
+    activeThread("turn-1"),
+    Date.parse("2026-07-26T06:00:05Z"),
+  );
+  assert.equal(result.durationSeconds, 5);
+
+  result = reduceThreadRecords(
+    result,
+    [
+      event("2026-07-26T06:00:08Z", "task_complete", { turn_id: "turn-1" }),
+      event("2026-07-26T06:00:20Z", "task_started", { turn_id: "turn-2" }),
+    ],
+    activeThread("turn-2", {
+      turn: { startedAt: unix("2026-07-26T06:00:20Z") },
+    }),
+    Date.parse("2026-07-26T06:00:25Z"),
+  );
+
+  assert.equal(result.durationSeconds, 13);
+});
+
+test("JSONL을 0부터 다시 읽어도 작업 구간을 중복 합산하지 않는다", () => {
+  const records = [
+    event("2026-07-26T06:00:00Z", "task_started", { turn_id: "turn-1" }),
+    toolCall("2026-07-26T06:00:02Z", "wait_agent", "{}", "child-wait"),
+    toolOutput("2026-07-26T06:00:05Z", "child-wait"),
+    event("2026-07-26T06:00:08Z", "task_complete", { turn_id: "turn-1" }),
+    event("2026-07-26T06:00:20Z", "task_started", { turn_id: "turn-2" }),
+  ];
+  const thread = activeThread("turn-2", {
+    turn: { startedAt: unix("2026-07-26T06:00:20Z") },
+  });
+  let result = reduceThreadRecords(
+    null,
+    records,
+    thread,
+    Date.parse("2026-07-26T06:00:25Z"),
+  );
+  assert.equal(result.durationSeconds, 10);
+
+  result = reduceThreadRecords(
+    result,
+    records,
+    thread,
+    Date.parse("2026-07-26T06:00:25Z"),
+  );
+  assert.equal(result.durationSeconds, 10);
 });
 
 test("task_complete를 보존하고 미지 사건을 무시해 정확히 10분부터 Idle로 내린다", () => {

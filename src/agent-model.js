@@ -97,6 +97,18 @@ function durationInSeconds(session) {
   return minutes * 60 + seconds;
 }
 
+export function getDisplayedDuration(session, collectedAt, nowMs) {
+  const duration = durationInSeconds(session);
+  const measuredAt = toTime(collectedAt);
+  if (
+    duration == null
+    || !session.isWorking
+    || measuredAt == null
+    || !Number.isFinite(nowMs)
+  ) return duration;
+  return duration + Math.max(0, Math.floor((nowMs - measuredAt) / 1000));
+}
+
 function sortValue(session, key) {
   const metrics = getSessionMetrics(session);
 

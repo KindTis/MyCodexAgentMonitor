@@ -230,7 +230,10 @@ test("시작 시 최근 미완료 루트 source만 등록하고 child는 부모 
     new Set(snapshot.sessions.map(({ id }) => id)),
     new Set(["active-root", "exec-root"]),
   );
-  assert.deepEqual(snapshot.sessions.find(({ id }) => id === "active-root").children.map(({ id }) => id), [
+  const activeRoot = snapshot.sessions.find(({ id }) => id === "active-root");
+  assert.equal(activeRoot.isWorking, true);
+  assert.equal(activeRoot.children[0].isWorking, true);
+  assert.deepEqual(activeRoot.children.map(({ id }) => id), [
     "child-a",
   ]);
   assert.ok(harness.appServer.listCalls.some(
@@ -288,7 +291,9 @@ test("Store 생성 뒤 수집 전에 시작·완료된 root와 child도 등록�
 
   const snapshot = await harness.store.initialize();
   assert.equal(snapshot.sessions[0].status, "complete");
+  assert.equal(snapshot.sessions[0].isWorking, false);
   assert.equal(snapshot.sessions[0].children[0].status, "complete");
+  assert.equal(snapshot.sessions[0].children[0].isWorking, false);
 });
 
 test("등록된 session은 Idle 뒤에도 남고 새 Turn에서 재개되며 terminal duration은 멈춘다", async () => {
