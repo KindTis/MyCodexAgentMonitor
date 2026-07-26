@@ -128,6 +128,7 @@ function createStoreHarness({
   initialRecords = {},
   startedAt,
   discoveredChildren = [],
+  discoverChildren = async () => structuredClone(discoveredChildren),
   readRepoMetadata = async (cwd) => ({
     projectName: path.win32.basename(cwd),
     gitBranch: "main",
@@ -172,7 +173,7 @@ function createStoreHarness({
     codexHome: "C:\\Users\\dev\\.codex",
     now: () => nowMs,
     readRepoMetadata,
-    discoverChildren: async () => structuredClone(discoveredChildren),
+    discoverChildren,
   });
 
   return {
@@ -236,12 +237,6 @@ test("catalog와 thread_spawn child를 합치고 fallback만 inferred로 표시�
       }),
       candidate("guardian", { subagent: { other: "guardian" } }),
       candidate("unknown", { subagent: { other: "future-kind" } }),
-      candidate("old-complete", {
-        subagent: { thread_spawn: { parent_thread_id: "root" } },
-      }, "2026-07-26T05:40:00Z"),
-      candidate("old-running", {
-        subagent: { thread_spawn: { parent_thread_id: "root" } },
-      }, "2026-07-26T05:40:00Z"),
     ],
   });
 
@@ -302,6 +297,47 @@ test("JSONL-only child를 같은 ID의 상세 정보로 갱신한다", async () 
   snapshot = await harness.store.collect();
   assert.equal(snapshot.sessions[0].children[0].agentNickname, "Recovered");
   assert.equal(snapshot.sessions[0].children[0].statusBasis, "observed");
+});
+
+test("모니터 재시작 뒤에도 등록된 root의 이전 child를 복구한다", async () => {
+  const oldJsonlChild = thread("old-jsonl-child", {
+    parentThreadId: "root",
+    source: {
+      subagent: { thread_spawn: { parent_thread_id: "root" } },
+    },
+    createdAt: unix("2026-07-26T05:40:00Z"),
+    updatedAt: unix("2026-07-26T05:41:00Z"),
+    turns: [],
+  });
+  const harness = createStoreHarness({
+    threads: [
+      thread("root", { updatedAt: unix("2026-07-26T05:59:30Z") }),
+      thread("old-catalog-child", {
+        parentThreadId: "root",
+        source: "subAgentThreadSpawn",
+        createdAt: unix("2026-07-26T05:40:00Z"),
+        updatedAt: unix("2026-07-26T05:41:00Z"),
+      }),
+    ],
+    startedAt: "2026-07-26T06:00:00Z",
+    initialRecords: {
+      root: [sessionEvent("2026-07-26T05:59:30Z", "task_started", {
+        turn_id: "root-turn",
+      })],
+    },
+    discoverChildren: async ({ updatedAfterMs }) => (
+      updatedAfterMs <= oldJsonlChild.updatedAt * 1000
+        ? [structuredClone(oldJsonlChild)]
+        : []
+    ),
+  });
+
+  const snapshot = await harness.store.initialize();
+
+  assert.deepEqual(
+    snapshot.sessions[0].children.map(({ id }) => id).sort(),
+    ["old-catalog-child", "old-jsonl-child"],
+  );
 });
 
 test("App Server 장애 중 cached catalog와 새 JSONL 상태를 적용한다", async () => {

@@ -87,6 +87,7 @@ export class SnapshotStore {
     const boundary = initial || this.#catalogWatermark == null
       ? Math.floor((this.monitorStartedAt - IDLE_AFTER_MS) / 1000)
       : this.#catalogWatermark;
+    const childBoundary = this.#catalogWatermark == null ? 0 : boundary;
     const registeredRoots = new Set(this.#registeredRoots);
     const registeredChildren = new Map(
       [...this.#registeredChildren].map(([rootId, ids]) => [rootId, new Set(ids)]),
@@ -154,7 +155,7 @@ export class SnapshotStore {
         discoveredFromJsonl = await this.discoverChildren({
           codexHome: this.codexHome,
           parentThreadIds: [...registeredRoots],
-          updatedAfterMs: boundary * 1000,
+          updatedAfterMs: childBoundary * 1000,
         });
       } catch (error) {
         throw new SessionReadFailure({ cause: error });
@@ -164,7 +165,7 @@ export class SnapshotStore {
         let discoveredChildren = [];
         try {
           discoveredChildren = await this.#listCatalog({
-            boundary,
+            boundary: childBoundary,
             sourceKinds: CHILD_SOURCE_KINDS,
             ancestorThreadId: rootId,
           });
@@ -238,8 +239,7 @@ export class SnapshotStore {
             child = threads.get(childId) ?? null;
           }
           if (!child) {
-            const createdAt = epochSecondsToMs(candidate.thread.createdAt);
-            if (!candidate.spawnObserved || createdAt < this.monitorStartedAt) continue;
+            if (!candidate.spawnObserved) continue;
             children.add(childId);
             threads.set(childId, candidate.thread);
             observations.set(
@@ -261,10 +261,6 @@ export class SnapshotStore {
             child,
             nowMs,
           );
-          const isRegistered = children.has(childId)
-            || this.#canRegister(child, observation, initial);
-          if (!isRegistered) continue;
-
           children.add(childId);
           threads.set(childId, child);
           observations.set(childId, observation);
