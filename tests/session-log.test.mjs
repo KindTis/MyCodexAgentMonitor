@@ -246,6 +246,102 @@ test("도구 결과가 오면 Waiting과 Planning을 해제하고 Plan은 유지
   assert.deepEqual(result.plan.tasks, [{ title: "검증", status: "active" }]);
 });
 
+test("이전 배치의 현재 Turn에 다음 배치 wait_agent를 적용한다", () => {
+  const thread = activeThread("turn-1", {
+    status: { type: "notLoaded" },
+    updatedAt: unix("2026-07-26T06:00:03Z"),
+    turn: { status: "interrupted" },
+  });
+  let observation = reduceThreadRecords(
+    null,
+    [event("2026-07-26T06:00:00Z", "task_started", { turn_id: "turn-1" })],
+    thread,
+    Date.parse("2026-07-26T06:00:02Z"),
+  );
+
+  observation = reduceThreadRecords(
+    observation,
+    [toolCall("2026-07-26T06:00:03Z", "wait_agent", "{}", "wait-1")],
+    thread,
+    Date.parse("2026-07-26T06:00:04Z"),
+  );
+
+  assert.equal(observation.turnId, "turn-1");
+  assert.equal(observation.currentActivity.label, "wait_agent");
+  assert.equal(observation.status, "waiting");
+  assert.equal(observation.statusBasis, "observed");
+  assert.equal(observation.isWorking, false);
+  assert.equal(observation.durationSeconds, 3);
+});
+
+test("현재 Turn의 App Server 대기는 inferred이고 더 최신 JSONL 활동이 우선한다", () => {
+  const waitingThread = activeThread("turn-1", {
+    updatedAt: unix("2026-07-26T06:00:01Z"),
+    status: { type: "active", activeFlags: ["waitingOnApproval"] },
+  });
+  const inferred = reduceThreadRecords(
+    null,
+    [],
+    waitingThread,
+    Date.parse("2026-07-26T06:00:02Z"),
+  );
+  assert.equal(inferred.status, "needs_input");
+  assert.equal(inferred.statusBasis, "inferred");
+  assert.equal(inferred.isWorking, false);
+  assert.equal(inferred.durationSeconds, 0);
+
+  const observed = reduceThreadRecords(
+    inferred,
+    [
+      event("2026-07-26T06:00:02Z", "task_started", { turn_id: "turn-1" }),
+      toolCall("2026-07-26T06:00:03Z", "shell_command", "{}", "tool-1"),
+    ],
+    waitingThread,
+    Date.parse("2026-07-26T06:00:04Z"),
+  );
+  assert.equal(observed.status, "running");
+  assert.equal(observed.statusBasis, "observed");
+  assert.equal(observed.isWorking, true);
+});
+
+test("App Server만 제공한 최근 상태는 inferred이고 시간을 누적하지 않는다", () => {
+  const result = reduceThreadRecords(
+    null,
+    [],
+    activeThread("turn-1", {
+      status: { type: "notLoaded" },
+      updatedAt: unix("2026-07-26T06:00:00Z"),
+      turn: { status: "interrupted" },
+    }),
+    Date.parse("2026-07-26T06:00:05Z"),
+  );
+
+  assert.equal(result.status, "running");
+  assert.equal(result.statusBasis, "inferred");
+  assert.equal(result.isWorking, false);
+  assert.equal(result.endedAt, null);
+  assert.equal(result.durationSeconds, 0);
+});
+
+test("현재 Turn의 명시적 종료는 오래된 대기보다 우선한다", () => {
+  const result = reduceThreadRecords(
+    null,
+    [
+      event("2026-07-26T06:00:00Z", "task_started", { turn_id: "turn-1" }),
+      event("2026-07-26T06:00:05Z", "task_complete", { turn_id: "turn-1" }),
+    ],
+    activeThread("turn-1", {
+      status: { type: "active", activeFlags: ["waitingOnUserInput"] },
+    }),
+    Date.parse("2026-07-26T06:00:06Z"),
+  );
+
+  assert.equal(result.status, "complete");
+  assert.equal(result.statusBasis, "observed");
+  assert.equal(result.isWorking, false);
+  assert.equal(result.durationSeconds, 5);
+});
+
 test("미해결 사용자 입력만 needs_input이고 질문·응답 본문은 보존하지 않는다", () => {
   const thread = activeThread("turn-1", { status: { type: "notLoaded" } });
   let result = reduceThreadRecords(
@@ -303,7 +399,7 @@ test("activeFlags와 terminal Turn 상태를 우선하고 종료 시각에서 du
 
   let resumed = reduceThreadRecords(
     waiting,
-    [],
+    [event("2026-07-26T06:00:20Z", "task_started", { turn_id: "turn-1" })],
     activeThread("turn-1"),
     Date.parse("2026-07-26T06:00:20Z"),
   );
@@ -355,6 +451,7 @@ test("승인 대기는 pending 도구가 시작된 시각부터 작업 시간에
     ],
     activeThread("turn-1", {
       status: { type: "active", activeFlags: ["waitingOnApproval"] },
+      updatedAt: unix("2026-07-26T06:00:10Z"),
     }),
     Date.parse("2026-07-26T06:00:10Z"),
   );
