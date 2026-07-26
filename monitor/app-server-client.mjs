@@ -2,7 +2,12 @@ import { execFile, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 
 const APP_SERVER_COMMAND = "codex.cmd app-server --listen stdio://";
-const ALLOWED_METHODS = new Set(["thread/list", "thread/read", "thread/goal/get"]);
+const ALLOWED_METHODS = new Set([
+  "thread/list",
+  "thread/read",
+  "thread/goal/get",
+  "account/rateLimits/read",
+]);
 
 export const APP_SERVER_REQUEST_TIMEOUT_MS = 5000;
 
@@ -107,6 +112,10 @@ export class AppServerClient {
 
   getGoal(threadId) {
     return this.#request("thread/goal/get", { threadId });
+  }
+
+  readRateLimits() {
+    return this.#request("account/rateLimits/read", {});
   }
 
   async stop() {

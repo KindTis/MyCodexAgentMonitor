@@ -77,7 +77,7 @@ async function startClient(t, process, options = {}) {
   return client;
 }
 
-test("초기화 뒤 세 가지 읽기 전용 메서드만 호출한다", async (t) => {
+test("초기화 뒤 네 가지 읽기 전용 메서드만 호출한다", async (t) => {
   const process = createFakeAppServerProcess();
   const client = await startClient(t, process);
 
@@ -102,12 +102,27 @@ test("초기화 뒤 세 가지 읽기 전용 메서드만 호출한다", async (
   process.reply(goalRequest, { goal: null });
   assert.deepEqual(await goal, { goal: null });
 
+  const limits = client.readRateLimits();
+  const limitsRequest = await process.nextRequest("account/rateLimits/read");
+  assert.deepEqual(limitsRequest.params, {});
+  process.reply(limitsRequest, {
+    rateLimitsByLimitId: {
+      codex: {
+        limitId: "codex",
+        primary: { usedPercent: 21, windowDurationMins: 300 },
+        secondary: { usedPercent: 6, windowDurationMins: 10080 },
+      },
+    },
+  });
+  assert.equal((await limits).rateLimitsByLimitId.codex.limitId, "codex");
+
   assert.deepEqual(process.methods(), [
     "initialize",
     "initialized",
     "thread/list",
     "thread/read",
     "thread/goal/get",
+    "account/rateLimits/read",
   ]);
   assert.deepEqual(process.messages()[0].params, {
     clientInfo: {
@@ -181,6 +196,7 @@ test("initialize와 모든 읽기 요청에 deadline을 적용한다", async (t)
   await assert.rejects(restarted.listThreads({}), AppServerTimeoutError);
   await assert.rejects(restarted.readThread("thread-a"), AppServerTimeoutError);
   await assert.rejects(restarted.getGoal("thread-a"), AppServerTimeoutError);
+  await assert.rejects(restarted.readRateLimits(), AppServerTimeoutError);
 });
 
 test("timeout된 요청의 늦은 응답을 무시하고 다음 응답을 올바르게 연결한다", async (t) => {
