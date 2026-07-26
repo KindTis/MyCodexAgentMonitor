@@ -168,7 +168,7 @@ function MetaValue({ label, children, accent = false, updated = false }) {
   );
 }
 
-function SessionRow({
+export function SessionRow({
   session,
   selected,
   onSelect,
@@ -214,10 +214,15 @@ function SessionRow({
         <small>Started {formatUtcTime(session.startedAt)}</small>
       </span>
       <span className="session-skills">
-        <MetaValue label="Skills">{metrics.skills || "—"}</MetaValue>
+        <MetaValue label="Skills" accent={metrics.skills > 0}>
+          {metrics.skills || "—"}
+        </MetaValue>
       </span>
       <span className="session-tasks">
-        <MetaValue label="Tasks">
+        <MetaValue
+          label="Tasks"
+          accent={Boolean(metrics.tasks && metrics.tasks.completed < metrics.tasks.total)}
+        >
           {metrics.tasks ? `${metrics.tasks.completed}/${metrics.tasks.total}` : "—"}
         </MetaValue>
       </span>
