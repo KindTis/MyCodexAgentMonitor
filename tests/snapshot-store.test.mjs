@@ -226,7 +226,11 @@ test("catalog와 thread_spawn child를 합치고 fallback만 inferred로 표시�
       })],
       duplicate: [sessionEvent("2026-07-26T06:00:01Z", "task_started", {
         turn_id: "duplicate-turn",
-      })],
+      }), {
+        timestamp: "2026-07-26T06:00:01.500Z",
+        type: "turn_context",
+        payload: { turn_id: "duplicate-turn", model: "gpt-5.6-sol" },
+      }],
     },
     discoveredChildren: [
       candidate("duplicate", {
@@ -244,6 +248,7 @@ test("catalog와 thread_spawn child를 합치고 fallback만 inferred로 표시�
   const children = snapshot.sessions[0].children;
   assert.deepEqual(children.map(({ id }) => id).sort(), ["duplicate", "spawn-only"]);
   assert.equal(children.filter(({ id }) => id === "duplicate").length, 1);
+  assert.equal(children.find(({ id }) => id === "duplicate").model, "gpt-5.6-sol");
   const fallback = children.find(({ id }) => id === "spawn-only");
   assert.equal(fallback.agentNickname, null);
   assert.equal(fallback.currentWork, null);

@@ -19,10 +19,10 @@ const props = {
   waitingCount: 0,
   sessionCount: 2,
   isLive: true,
-  wallClock: Date.parse("2026-07-26T12:19:44.000Z"),
+  wallClock: new Date(2026, 6, 26, 21, 19, 44).getTime(),
 };
 
-test("상단 상태·오늘 사용량·Limit·KST 시각을 합의된 순서로 표시한다", () => {
+test("상단 상태·오늘 사용량·Limit·로컬 시각을 합의된 순서로 표시한다", () => {
   const markup = renderToStaticMarkup(createElement(SystemSummary, {
     ...props,
     usage: {
@@ -36,7 +36,7 @@ test("상단 상태·오늘 사용량·Limit·KST 시각을 합의된 순서로 
 
   assert.match(
     text,
-    /2 running 0 waiting 2 sessions \| Tokens 522,555,501 · Cost \$369\.2616 \| 5H 21% · 1W 6% \| 21:19:44 KST/,
+    /2 running 0 waiting 2 sessions \| Tokens 522,555,501 · Cost \$369\.2616 \| 5H 21% · 1W 6% \| 21:19:44 .+/,
   );
 });
 
@@ -58,15 +58,15 @@ test("조회 전 또는 실패한 사용량은 각 자리에 em dash를 표시�
   assert.match(text, /1W —/);
 });
 
-test("Paused 상태에서도 전달된 현재 KST 시각을 표시한다", () => {
+test("Paused 상태에서도 전달된 현재 로컬 시각을 표시한다", () => {
   const markup = renderToStaticMarkup(createElement(SystemSummary, {
     ...props,
     isLive: false,
-    wallClock: Date.parse("2026-07-26T12:19:45.000Z"),
+    wallClock: new Date(2026, 6, 26, 21, 19, 45).getTime(),
     usage: {},
   }));
 
-  assert.match(markup, /21:19:45 KST/);
+  assert.match(markup, /21:19:45 .+<\/time>/);
 });
 
 test("증가하는 사용량은 1.5초 동안 중간값을 거쳐 목표값에 도달한다", () => {

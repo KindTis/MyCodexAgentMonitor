@@ -5,10 +5,10 @@ import {
   formatCostUsd,
   formatDuration,
   formatGoalStatus,
-  formatKstTime,
+  formatLocalClock,
+  formatLocalTime,
   formatPercent,
   formatTokenCount,
-  formatUtcTime,
   getDisplayedDuration,
   getPlanProgress,
   getRelativeTime,
@@ -32,15 +32,13 @@ test("서버의 원시 시간과 토큰을 표시 문자열로 바꾼다", () =>
   assert.equal(formatPercent(21.4), "21%");
   assert.equal(formatPercent(106.2), "106%");
   assert.equal(formatPercent(-1), "—");
-  assert.equal(
-    formatKstTime("2026-07-26T12:19:44.000Z"),
-    "21:19:44 KST",
-  );
-  assert.equal(formatKstTime(null), "—");
+  const localDate = new Date(2026, 6, 26, 21, 19, 44);
+  assert.match(formatLocalClock(localDate), /^21:19:44 .+$/);
+  assert.equal(formatLocalClock(null), "—");
   assert.equal(formatGoalStatus("usageLimited"), "Usage limited");
   assert.equal(formatGoalStatus("unknown"), "—");
-  assert.equal(formatUtcTime("2026-07-26T06:00:02.000Z"), "06:00:02");
-  assert.equal(formatUtcTime(null), "—");
+  assert.equal(formatLocalTime(localDate), "21:19:44");
+  assert.equal(formatLocalTime(null), "—");
 });
 
 test("연결된 Live 작업 시간만 snapshot 사이 경과 시간을 보간한다", () => {

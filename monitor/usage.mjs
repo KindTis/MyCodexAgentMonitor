@@ -3,8 +3,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const CCUSAGE_TIMEOUT_MS = 5000;
-const KST_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
-  timeZone: "Asia/Seoul",
+const LOCAL_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
@@ -19,9 +18,9 @@ export const EMPTY_USAGE = {
   oneWeekUsedPercent: null,
 };
 
-function getKstDateKey(now) {
+function getLocalDateKey(now) {
   const parts = Object.fromEntries(
-    KST_DATE_FORMAT.formatToParts(now).map(({ type, value }) => [type, value]),
+    LOCAL_DATE_FORMAT.formatToParts(now).map(({ type, value }) => [type, value]),
   );
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
@@ -42,7 +41,7 @@ function readNonNegativeFinite(record, field) {
 }
 
 export function parseCcusageDaily(payload, now = new Date()) {
-  const today = getRows(payload).find(({ date }) => date === getKstDateKey(now));
+  const today = getRows(payload).find(({ date }) => date === getLocalDateKey(now));
   if (!today) return { todayTokens: 0, todayCostUsd: 0 };
 
   const todayTokens = readNonNegativeFinite(today, "totalTokens");

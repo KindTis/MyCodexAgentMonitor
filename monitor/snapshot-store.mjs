@@ -512,6 +512,7 @@ function buildChild(thread, observation, goal, rootId) {
     parentSessionId: rootId,
     agentNickname: thread.agentNickname,
     agentRole: thread.agentRole,
+    model: observation.model,
     status: observation.status,
     statusBasis: observation.statusBasis,
     isWorking: observation.isWorking,

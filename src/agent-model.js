@@ -84,7 +84,8 @@ export function getVisibleSessions(sessions) {
 }
 
 function toTime(value) {
-  const timestamp = Date.parse(value);
+  if (value == null) return null;
+  const timestamp = new Date(value).getTime();
   return Number.isNaN(timestamp) ? null : timestamp;
 }
 
@@ -171,12 +172,18 @@ export function getRelativeTime(lastActivityAt, now = new Date()) {
   return `${Math.floor(seconds / 3600)}h ago`;
 }
 
-const KST_TIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Asia/Seoul",
+const LOCAL_TIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
   hourCycle: "h23",
+});
+const LOCAL_CLOCK_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+  timeZoneName: "short",
 });
 
 export function formatTokenCount(value) {
@@ -193,10 +200,9 @@ export function formatPercent(value) {
   return Number.isFinite(value) && value >= 0 ? `${Math.round(value)}%` : "—";
 }
 
-export function formatKstTime(value) {
-  if (value == null) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : `${KST_TIME_FORMAT.format(date)} KST`;
+export function formatLocalClock(value) {
+  const time = toTime(value);
+  return time == null ? "—" : LOCAL_CLOCK_FORMAT.format(time);
 }
 
 export function formatDuration(seconds) {
@@ -210,9 +216,9 @@ export function formatDuration(seconds) {
     : `${minutes}:${String(rest).padStart(2, "0")}`;
 }
 
-export function formatUtcTime(value) {
-  const time = Date.parse(value);
-  return Number.isNaN(time) ? "—" : new Date(time).toISOString().slice(11, 19);
+export function formatLocalTime(value) {
+  const time = toTime(value);
+  return time == null ? "—" : LOCAL_TIME_FORMAT.format(time);
 }
 
 const GOAL_STATUS_LABELS = {

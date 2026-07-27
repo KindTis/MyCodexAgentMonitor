@@ -20,6 +20,7 @@ const child = {
   parentSessionId: "root",
   agentNickname: "navigator",
   agentRole: "research",
+  model: "gpt-5.6-sol",
   status: "running",
   statusBasis: "observed",
   isWorking: true,
@@ -91,6 +92,8 @@ test("선택한 Child Agent의 합의된 상세 정보를 dialog에 표시한다
   }));
 
   assert.match(markup, /<dialog/);
+  assert.equal(markup.match(/gpt-5\.6-sol/g)?.length, 2);
+  assert.match(markup, />Local</);
   for (const content of [
     "Current work",
     "Inspect child rendering",

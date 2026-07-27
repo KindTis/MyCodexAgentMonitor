@@ -256,7 +256,9 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
     }
     if (activeTurnId && targetTurnId && activeTurnId !== targetTurnId) continue;
 
-    if (record.type === "event_msg") {
+    if (record.type === "turn_context" && typeof payload.model === "string") {
+      observation.model = payload.model;
+    } else if (record.type === "event_msg") {
       applyEventRecord(observation, record);
     } else if (record.type === "response_item") {
       applyResponseRecord(observation, record);
@@ -285,6 +287,7 @@ function createObservation(turnId, turn, previous = null) {
   return {
     turnId,
     assignedWork: "",
+    model: null,
     skills: [],
     plan: null,
     tokens: null,

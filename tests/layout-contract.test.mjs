@@ -52,9 +52,9 @@ test("상세 DOM은 세 개 논리 열의 합의된 카드 순서를 유지한�
     "Current work",
     "Recent activity",
     "Goal",
-    "Child agents",
     "Tasks",
     "Applied skills",
+    "Child agents",
     "Token usage",
   ];
   let previous = -1;
@@ -68,20 +68,71 @@ test("상세 DOM은 세 개 논리 열의 합의된 카드 순서를 유지한�
 test("데스크톱 상세 열과 각 열의 행 비율이 정확하다", () => {
   assert.match(
     declarations(".detail-grid"),
-    /grid-template-columns: minmax\(0, 35fr\) minmax\(0, 35fr\) minmax\(0, 30fr\)/,
+    /grid-template-columns: minmax\(0, 34fr\) minmax\(0, 33fr\) minmax\(0, 33fr\)/,
   );
   assert.match(
     declarations(".detail-column--work"),
     /grid-template-rows: minmax\(0, 2fr\) minmax\(0, 3fr\)/,
   );
   assert.match(
-    declarations(".detail-column--agents"),
-    /grid-template-rows: minmax\(0, 3fr\) minmax\(0, 7fr\)/,
+    declarations(".detail-column--planning"),
+    /grid-template-rows: minmax\(0, 3fr\) minmax\(0, 5fr\) minmax\(0, 2fr\)/,
   );
   assert.match(
-    declarations(".detail-column--planning"),
-    /grid-template-rows: minmax\(0, 3fr\) minmax\(0, 1fr\) minmax\(0, 1fr\)/,
+    declarations(".detail-column--agents"),
+    /grid-template-rows: minmax\(0, 4fr\) minmax\(0, 1fr\)/,
   );
+});
+
+test("Child Agent 상세는 60/40 두 행과 50/50·3등분 열을 사용한다", () => {
+  const dialog = app.slice(
+    app.indexOf("function ChildAgentDialog"),
+    app.indexOf("export function ChildAgents"),
+  );
+  const labels = [
+    "Current work",
+    "Recent activity",
+    "Goal",
+    "Tasks",
+    "Applied skills",
+  ];
+  let previous = -1;
+  for (const label of labels) {
+    const next = dialog.indexOf(` /> ${label}</span>`);
+    assert.ok(next > previous, `${label} is out of order`);
+    previous = next;
+  }
+
+  assert.match(
+    declarations(".child-dialog-grid"),
+    /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/,
+  );
+  assert.match(
+    declarations(".child-dialog-grid"),
+    /grid-template-rows: minmax\(0, 3fr\) minmax\(0, 2fr\)/,
+  );
+  assert.match(
+    declarations(".child-dialog-grid > .detail-card"),
+    /grid-column: span 2/,
+  );
+  assert.match(
+    css,
+    /\.child-dialog-grid > \.child-dialog-current,\s*\.child-dialog-grid > \.activity-card\s*\{[^}]*grid-column: span 3/s,
+  );
+});
+
+test("Child Agent 상세 카드는 남은 높이를 사용하고 넘치는 내용만 내부 스크롤한다", () => {
+  assert.doesNotMatch(
+    css,
+    /\.child-dialog-grid\s+\.(?:task-list|activity-list)\s*\{[^}]*max-height:/s,
+  );
+  assert.match(
+    declarations(".child-dialog-grid > .detail-card"),
+    /overflow-y: auto/,
+  );
+  const header = declarations(".child-dialog-grid > .detail-card > .card-header");
+  assert.match(header, /position: sticky/);
+  assert.match(header, /top: 0/);
 });
 
 test("데스크톱 상세 카드는 행을 채우고 인접 카드 사이를 구분한다", () => {

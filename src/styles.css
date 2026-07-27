@@ -154,7 +154,7 @@ time,
 }
 
 .system-summary time {
-  color: #62767d;
+  color: inherit;
   white-space: nowrap;
 }
 
@@ -808,9 +808,9 @@ time,
   min-height: 0;
   flex: 1;
   grid-template-columns:
-    minmax(0, 35fr)
-    minmax(0, 35fr)
-    minmax(0, 30fr);
+    minmax(0, 34fr)
+    minmax(0, 33fr)
+    minmax(0, 33fr);
 }
 
 .detail-column {
@@ -826,14 +826,14 @@ time,
 }
 
 .detail-column--agents {
-  grid-template-rows: minmax(0, 3fr) minmax(0, 7fr);
+  grid-template-rows: minmax(0, 4fr) minmax(0, 1fr);
 }
 
 .detail-column--planning {
   grid-template-rows:
     minmax(0, 3fr)
-    minmax(0, 1fr)
-    minmax(0, 1fr);
+    minmax(0, 5fr)
+    minmax(0, 2fr);
 }
 
 .detail-column + .detail-column {
@@ -1277,10 +1277,12 @@ time,
 }
 
 .child-agent-dialog {
+  display: flex;
   width: min(760px, calc(100vw - 32px));
-  max-height: min(780px, calc(100dvh - 32px));
+  height: min(780px, calc(100dvh - 32px));
+  flex-direction: column;
   padding: 0;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   color: var(--text);
@@ -1356,36 +1358,46 @@ time,
 
 .child-dialog-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
 }
 
 .child-dialog-grid > .detail-card {
   min-width: 0;
   min-height: 0;
+  grid-column: span 2;
   margin: 0;
   padding: 14px;
+  overflow-y: auto;
   border: 0;
   border-radius: 0;
   border-bottom: 1px solid var(--line);
+  scrollbar-color: #34474d transparent;
+  scrollbar-width: thin;
 }
 
-.child-dialog-grid > .detail-card:nth-child(even) {
+.child-dialog-grid > .detail-card > .card-header {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  flex: 0 0 auto;
+  background: var(--panel);
+}
+
+.child-dialog-grid > .detail-card:nth-child(2),
+.child-dialog-grid > .detail-card:nth-child(n + 4) {
   border-left: 1px solid var(--line);
 }
 
-.child-dialog-current,
+.child-dialog-grid > .child-dialog-current,
 .child-dialog-grid > .activity-card {
-  grid-column: 1 / -1;
+  grid-column: span 3;
 }
 
-.child-dialog-grid > .activity-card {
+.child-dialog-grid > .detail-card:nth-child(n + 3) {
   border-bottom: 0;
-  border-left: 0;
-}
-
-.child-dialog-grid .task-list,
-.child-dialog-grid .activity-list {
-  max-height: 190px;
 }
 
 .activity-card {
@@ -1704,7 +1716,7 @@ time,
     align-content: start;
   }
 
-  .detail-column--planning {
+  .detail-column--agents {
     grid-column: 1 / -1;
     border-top: 1px solid var(--line);
     border-left: 0 !important;
@@ -1780,21 +1792,30 @@ time,
     border-left: 0;
   }
 
-  .detail-column--planning {
+  .detail-column--agents {
     grid-column: auto;
+  }
+
+  .child-agent-dialog {
+    display: block;
+    height: auto;
+    max-height: min(780px, calc(100dvh - 32px));
+    overflow: auto;
   }
 
   .child-dialog-grid {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
   }
 
-  .child-dialog-current,
-  .child-dialog-grid > .activity-card {
+  .child-dialog-grid > .detail-card {
     grid-column: auto;
+    border-left: 0;
+    border-bottom: 1px solid var(--line);
   }
 
-  .child-dialog-grid > .detail-card:nth-child(even) {
-    border-left: 0;
+  .child-dialog-grid > .detail-card:last-child {
+    border-bottom: 0;
   }
 
   .page-footer > span {

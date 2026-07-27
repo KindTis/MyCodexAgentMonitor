@@ -9,9 +9,9 @@ import {
   USAGE_COLLECTION_INTERVAL_MS,
 } from "../monitor/usage.mjs";
 
-const now = new Date("2026-07-25T15:19:44.000Z");
+const now = new Date(2026, 6, 26, 20, 19, 44);
 
-test("KST 오늘 ccusage 행의 토큰과 지원 비용 필드를 읽는다", () => {
+test("로컬 오늘 ccusage 행의 토큰과 지원 비용 필드를 읽는다", () => {
   assert.deepEqual(
     parseCcusageDaily({
       daily: [{
@@ -34,7 +34,7 @@ test("KST 오늘 ccusage 행의 토큰과 지원 비용 필드를 읽는다", ()
   );
 });
 
-test("정상 ccusage JSON에 KST 오늘 행이 없으면 0을 반환한다", () => {
+test("정상 ccusage JSON에 로컬 오늘 행이 없으면 0을 반환한다", () => {
   assert.deepEqual(
     parseCcusageDaily({
       daily: [{
@@ -146,7 +146,7 @@ test("두 사용량 원천은 독립 실패하고 이전 값을 보존하지 않
     }),
   });
   assert.deepEqual(limitsOnly, {
-    collectedAt: "2026-07-25T15:19:44.000Z",
+    collectedAt: now.toISOString(),
     todayTokens: null,
     todayCostUsd: null,
     fiveHourUsedPercent: 21,
@@ -161,7 +161,7 @@ test("두 사용량 원천은 독립 실패하고 이전 값을 보존하지 않
     },
   });
   assert.deepEqual(dailyOnly, {
-    collectedAt: "2026-07-25T15:19:44.000Z",
+    collectedAt: now.toISOString(),
     todayTokens: 12,
     todayCostUsd: 0.5,
     fiveHourUsedPercent: null,

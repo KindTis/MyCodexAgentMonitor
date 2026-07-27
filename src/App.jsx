@@ -41,10 +41,10 @@ import {
   formatCostUsd,
   formatDuration,
   formatGoalStatus,
-  formatKstTime,
+  formatLocalClock,
+  formatLocalTime,
   formatPercent,
   formatTokenCount,
-  formatUtcTime,
   getDisplayedDuration,
   getPlanProgress,
   getRelativeTime,
@@ -211,7 +211,7 @@ export function SessionRow({
       </span>
       <span className="session-time">
         <strong>{formatDuration(duration)}</strong>
-        <small>Started {formatUtcTime(session.startedAt)}</small>
+        <small>Started {formatLocalTime(session.startedAt)}</small>
       </span>
       <span className="session-skills">
         <MetaValue label="Skills" accent={metrics.skills > 0}>
@@ -311,7 +311,7 @@ function ChildAgentDialog({ child, onClose, collectedAt, clock }) {
         <div className="detail-agent">
           <AgentMark item={child} size={36} active={normalizeStatus(child.status) === "running"} />
           <div>
-            <p>Child agent</p>
+            <p>{child.model ?? "Model unavailable"}</p>
             <h3 id="child-agent-dialog-title">
               {child.agentNickname ?? child.threadId.slice(0, 8)}
             </h3>
@@ -347,26 +347,23 @@ function ChildAgentDialog({ child, onClose, collectedAt, clock }) {
           </div>
         </article>
 
-        <article className="detail-card">
+        <article className="detail-card activity-card">
           <header className="card-header">
-            <span><BracketsCurly size={16} /> Applied skills</span>
-            <b>{child.skills?.length ?? 0}</b>
+            <span><Pulse size={16} /> Recent activity</span>
+            <b>Local</b>
           </header>
-          {child.skills?.length ? (
-            <ul className="skill-chips">
-              {child.skills.map((skill) => <li key={skill}>{skill}</li>)}
-            </ul>
+          {child.activity?.length ? (
+            <ol className="activity-list">
+              {child.activity.map((activity) => (
+                <li key={activity.id} data-kind={activity.kind}>
+                  <time>{formatLocalTime(activity.at)}</time>
+                  <span>{activity.label}</span>
+                </li>
+              ))}
+            </ol>
           ) : (
-            <p className="empty-copy">No skills were observed for this Turn.</p>
+            <p className="empty-copy">No recent tool activity was observed.</p>
           )}
-        </article>
-
-        <article className="detail-card task-card">
-          <header className="card-header">
-            <span><CheckCircle size={16} /> Tasks</span>
-            <b>{progress.total ? `${progress.completed}/${progress.total}` : "Not used"}</b>
-          </header>
-          <TaskList plan={child.plan} collectedAt={collectedAt} />
         </article>
 
         <article className={`detail-card goal-card ${child.goal ? "" : "goal-card--empty"}`}>
@@ -389,22 +386,25 @@ function ChildAgentDialog({ child, onClose, collectedAt, clock }) {
           )}
         </article>
 
-        <article className="detail-card activity-card">
+        <article className="detail-card task-card">
           <header className="card-header">
-            <span><Pulse size={16} /> Recent activity</span>
-            <b>UTC</b>
+            <span><CheckCircle size={16} /> Tasks</span>
+            <b>{progress.total ? `${progress.completed}/${progress.total}` : "Not used"}</b>
           </header>
-          {child.activity?.length ? (
-            <ol className="activity-list">
-              {child.activity.map((activity) => (
-                <li key={activity.id} data-kind={activity.kind}>
-                  <time>{formatUtcTime(activity.at)}</time>
-                  <span>{activity.label}</span>
-                </li>
-              ))}
-            </ol>
+          <TaskList plan={child.plan} collectedAt={collectedAt} />
+        </article>
+
+        <article className="detail-card">
+          <header className="card-header">
+            <span><BracketsCurly size={16} /> Applied skills</span>
+            <b>{child.skills?.length ?? 0}</b>
+          </header>
+          {child.skills?.length ? (
+            <ul className="skill-chips">
+              {child.skills.map((skill) => <li key={skill}>{skill}</li>)}
+            </ul>
           ) : (
-            <p className="empty-copy">No recent tool activity was observed.</p>
+            <p className="empty-copy">No skills were observed for this Turn.</p>
           )}
         </article>
       </div>
@@ -459,7 +459,7 @@ export function ChildAgents({
                 />
                 <span>
                   <strong>{child.agentNickname ?? child.threadId.slice(0, 8)}</strong>
-                  <small>{child.agentRole ?? "Child agent"}</small>
+                  <small>{child.model ?? "Model unavailable"}</small>
                 </span>
               </span>
               <span role="cell">
@@ -592,7 +592,7 @@ export function SessionDetail({
           <article className="detail-card activity-card">
             <header className="card-header">
               <span><Pulse size={16} /> Recent activity</span>
-              <b>UTC</b>
+              <b>Local</b>
             </header>
             {session.activity?.length ? (
               <ol className="activity-list">
@@ -602,7 +602,7 @@ export function SessionDetail({
                     data-kind={activity.kind}
                     className={changes.activityIds.includes(activity.id) ? "activity-item--updated" : ""}
                   >
-                    <time>{formatUtcTime(activity.at)}</time>
+                    <time>{formatLocalTime(activity.at)}</time>
                     <span>{activity.label}</span>
                   </li>
                 ))}
@@ -613,7 +613,7 @@ export function SessionDetail({
           </article>
         </div>
 
-        <div className="detail-column detail-column--agents">
+        <div className="detail-column detail-column--planning">
           <article className={`detail-card goal-card ${session.goal ? "" : "goal-card--empty"}`}>
             <header className="card-header">
               <span><Target size={16} /> Goal</span>
@@ -634,23 +634,6 @@ export function SessionDetail({
             )}
           </article>
 
-          <article className="detail-card child-card">
-            <header className="card-header">
-              <span><GitBranch size={16} /> Child agents</span>
-              <b>{session.children?.length ?? 0}</b>
-            </header>
-            <ChildAgents
-              children={session.children ?? []}
-              selectedChildId={selectedChildId}
-              onSelect={onSelectChild}
-              clock={clock}
-              changes={changes}
-              collectedAt={collectedAt}
-            />
-          </article>
-        </div>
-
-        <div className="detail-column detail-column--planning">
           <article className="detail-card task-card">
             <header className="card-header">
               <span><CheckCircle size={16} /> Tasks</span>
@@ -675,6 +658,23 @@ export function SessionDetail({
             ) : (
               <p className="empty-copy">No skills were observed for this Turn.</p>
             )}
+          </article>
+        </div>
+
+        <div className="detail-column detail-column--agents">
+          <article className="detail-card child-card">
+            <header className="card-header">
+              <span><GitBranch size={16} /> Child agents</span>
+              <b>{session.children?.length ?? 0}</b>
+            </header>
+            <ChildAgents
+              children={session.children ?? []}
+              selectedChildId={selectedChildId}
+              onSelect={onSelectChild}
+              clock={clock}
+              changes={changes}
+              collectedAt={collectedAt}
+            />
           </article>
 
           <article className="detail-card">
@@ -800,7 +800,7 @@ export function SystemSummary({
         {" · "}
         1W {formatPercent(usage?.oneWeekUsedPercent)}
       </span>
-      <time>| {formatKstTime(wallClock)}</time>
+      <time>| {formatLocalClock(wallClock)}</time>
     </div>
   );
 }
@@ -1140,7 +1140,7 @@ export function App() {
         <ConnectionState status={connectionStatus}>
           {feedAge || "waiting for first snapshot"}
         </ConnectionState>
-        <span>Session event time shown in UTC</span>
+        <span>Session event time shown in local time</span>
       </footer>
 
       {selectionNotice && (

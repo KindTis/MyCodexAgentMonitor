@@ -264,6 +264,11 @@ test("이전 Turn을 버리고 현재 Turn의 작업·스킬·Plan·토큰만 �
       turn_id: "current",
       started_at: "2026-07-26T06:00:00Z",
     }),
+    {
+      timestamp: "2026-07-26T06:00:00.500Z",
+      type: "turn_context",
+      payload: { turn_id: "current", model: "gpt-5.6-sol" },
+    },
     event("2026-07-26T06:00:01Z", "user_message", {
       message: "$superpowers:using-superpowers 현황판을 구현해.\n"
         + "<environment_context>구조 정보</environment_context>",
@@ -293,6 +298,7 @@ test("이전 Turn을 버리고 현재 Turn의 작업·스킬·Plan·토큰만 �
   );
 
   assert.equal(result.turnId, "current");
+  assert.equal(result.model, "gpt-5.6-sol");
   assert.equal(result.assignedWork, "마지막 작업을 확인해.");
   assert.deepEqual(result.skills, ["superpowers:using-superpowers", "myloop"]);
   assert.deepEqual(result.plan.tasks, [
