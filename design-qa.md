@@ -1,8 +1,8 @@
 # 반응형 좌우형 모니터 Design QA
 
 - Defect evidence: 사용자가 제공한 1586 × 835 화면 캡처
-- Desktop implementation: `docs/design-qa/responsive-session-cards-desktop.png`
-- Stacked implementation: `docs/design-qa/responsive-session-cards-stacked.png`
+- Desktop implementation: `assets/responsive-session-cards-desktop.png`
+- Stacked implementation: `assets/responsive-session-cards-stacked.png`
 - State: 실제 로컬 Codex snapshot, Live, Operational order, 선택된 실행 중 세션
 
 ## Full-view evidence

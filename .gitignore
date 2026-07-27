@@ -4,10 +4,11 @@ dist/
 .playwright-cli/
 .worktrees/
 
-graphify-out/cache/
-graphify-out/.graphify_python
-graphify-out/.graphify_root
-graphify-out/.graphify_learning.json
-graphify-out/20??-??-??/
-docs
-graphify-out
+docs/
+graphify-out/
+
+.env
+.env.*
+!.env.example
+
+CODEX_AGENT_STATUS.md
