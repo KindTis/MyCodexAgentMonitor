@@ -347,11 +347,110 @@ export function GlobalActivityBoard({
     () => getActivityBoardLanes(sessions),
     [sessions],
   );
+  const boardRef = useRef(null);
+  const previousCardRects = useRef(new Map());
+  const previousCardPositions = useRef(new Map());
+
+  const captureCardRects = useCallback(() => {
+    const cards = [
+      ...(boardRef.current?.querySelectorAll("[data-board-session-id]") ?? []),
+    ];
+    previousCardRects.current = new Map(cards.map((card) => [
+      card.dataset.boardSessionId,
+      card.getBoundingClientRect(),
+    ]));
+  }, []);
+
+  useEffect(() => {
+    const scrollOptions = { capture: true, passive: true };
+    window.addEventListener("resize", captureCardRects);
+    document.addEventListener("scroll", captureCardRects, scrollOptions);
+    return () => {
+      window.removeEventListener("resize", captureCardRects);
+      document.removeEventListener("scroll", captureCardRects, true);
+    };
+  }, [captureCardRects]);
+
+  useLayoutEffect(() => {
+    const cards = [
+      ...(boardRef.current?.querySelectorAll("[data-board-session-id]") ?? []),
+    ];
+    const nextRects = new Map(cards.map((card) => [
+      card.dataset.boardSessionId,
+      card.getBoundingClientRect(),
+    ]));
+    const nextPositions = new Map(lanes.flatMap((lane) => (
+      lane.sessions.map((session, index) => [
+        session.id,
+        `${lane.id}:${index}`,
+      ])
+    )));
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const cleanups = [];
+
+    if (!reduceMotion) {
+      cards.forEach((card) => {
+        const sessionId = card.dataset.boardSessionId;
+        if (
+          previousCardPositions.current.get(sessionId)
+          === nextPositions.get(sessionId)
+        ) return;
+
+        const previous = previousCardRects.current.get(sessionId);
+        const next = nextRects.get(sessionId);
+        const x = previous && next ? previous.left - next.left : 0;
+        const y = previous && next ? previous.top - next.top : 0;
+        if (!x && !y) return;
+
+        const ghost = document.createElement("div");
+        ghost.className = `${card.className} global-session-card--motion`;
+        ghost.setAttribute("aria-hidden", "true");
+        ghost.innerHTML = card.innerHTML;
+        Object.assign(ghost.style, {
+          left: `${previous.left}px`,
+          top: `${previous.top}px`,
+          width: `${previous.width}px`,
+          height: `${previous.height}px`,
+        });
+        document.body.append(ghost);
+        gsap.set(card, { opacity: 0 });
+
+        let cleaned = false;
+        const cleanup = () => {
+          if (cleaned) return;
+          cleaned = true;
+          gsap.set(card, { clearProps: "opacity" });
+          ghost.remove();
+        };
+        const tween = gsap.to(ghost, {
+          left: next.left,
+          top: next.top,
+          width: next.width,
+          height: next.height,
+          duration: 0.38,
+          ease: "power2.out",
+          onComplete: cleanup,
+        });
+        cleanups.push(() => {
+          tween.kill();
+          cleanup();
+        });
+      });
+    }
+
+    previousCardRects.current = nextRects;
+    previousCardPositions.current = nextPositions;
+    return () => cleanups.forEach((cleanup) => cleanup());
+  }, [collectedAt, lanes]);
+
   const snapshotAge = getRelativeTime(collectedAt, new Date(wallClock));
   const connectedWorking = isLive && isConnected && Boolean(collectedAt);
 
   return (
     <section
+      ref={boardRef}
       className="global-board"
       aria-labelledby="global-activity-title"
     >
@@ -717,7 +816,7 @@ export function SessionDetail({
           <AgentMark item={session} size={42} />
           <div>
             <p>{session.gitBranch}</p>
-            <h2>{session.session}</h2>
+            <h2 id="session-detail-title" tabIndex={-1}>{session.session}</h2>
           </div>
         </div>
         <div className="detail-meta">
@@ -993,10 +1092,36 @@ export function App() {
   const isLiveRef = useRef(true);
   const ledgerRef = useRef(null);
   const previousRects = useRef(new Map());
+  const selectedSessionIdRef = useRef(null);
+  const selectionOrigin = useRef(null);
+  const pendingFocus = useRef(null);
+
+  const commitSessionSelection = useCallback((id) => {
+    selectedSessionIdRef.current = id;
+    setSelectedSessionId(id);
+    setSelectedChildId(null);
+  }, []);
 
   const applySnapshot = useCallback((next) => {
     setChanges(getSnapshotChanges(appliedSnapshot.current, next));
     appliedSnapshot.current = next;
+
+    const selectedId = selectedSessionIdRef.current;
+    const selectedStillExists = !selectedId || getVisibleSessions(next.sessions)
+      .some((session) => session.id === selectedId);
+
+    if (!selectedStillExists) {
+      const active = document.activeElement;
+      const activeListRow = active?.closest?.("[data-session-id]");
+      const focusWillDisappear = (
+        document.querySelector("#session-detail")?.contains(active)
+        || activeListRow?.dataset.sessionId === selectedId
+      );
+      if (focusWillDisappear) {
+        pendingFocus.current = { kind: "board-title" };
+      }
+    }
+
     setSnapshot(next);
     setClock(Date.now());
   }, []);
@@ -1074,9 +1199,8 @@ export function App() {
     setSelectionNotice(
       "The selected session is no longer in the current server snapshot.",
     );
-    setSelectedSessionId(null);
-    setSelectedChildId(null);
-  }, [selectedSessionId, visibleSessions]);
+    commitSessionSelection(null);
+  }, [commitSessionSelection, selectedSessionId, visibleSessions]);
 
   useEffect(() => {
     const list = ledgerRef.current?.querySelector(".session-list");
@@ -1090,6 +1214,33 @@ export function App() {
       scrollTop: list.scrollTop,
     });
   }, [selectedSessionId, visibleSessions]);
+
+  useLayoutEffect(() => {
+    const target = pendingFocus.current;
+    if (!target) return;
+
+    let element = null;
+    if (target.kind === "detail") {
+      element = document.getElementById("session-detail-title");
+    } else if (target.kind === "board-title") {
+      element = document.getElementById("global-activity-title");
+    } else {
+      const selector = target.kind === "board"
+        ? "[data-board-session-id]"
+        : "[data-session-id]";
+      const dataKey = target.kind === "board"
+        ? "boardSessionId"
+        : "sessionId";
+      element = [...document.querySelectorAll(selector)]
+        .find((candidate) => candidate.dataset[dataKey] === target.sessionId);
+      element ??= document.getElementById("global-activity-title");
+    }
+
+    if (element) {
+      pendingFocus.current = null;
+      element.focus();
+    }
+  }, [selectedSession, visibleSessions]);
 
   useLayoutEffect(() => {
     const rows = [...(ledgerRef.current?.querySelectorAll("[data-session-id]") ?? [])];
@@ -1135,14 +1286,19 @@ export function App() {
   }, [changes, snapshot.collectedAt, visibleSessions]);
 
   const selectSession = (id, source = "list") => {
-    const nextId = source === "list" && id === selectedSessionId ? null : id;
-    setSelectedSessionId(nextId);
-    setSelectedChildId(null);
+    if (source === "list" && id === selectedSessionId) {
+      commitSessionSelection(null);
+      return;
+    }
+
+    selectionOrigin.current = { kind: source, sessionId: id };
+    if (source === "board") pendingFocus.current = { kind: "detail" };
+    commitSessionSelection(id);
   };
 
   const closeSession = () => {
-    setSelectedSessionId(null);
-    setSelectedChildId(null);
+    pendingFocus.current = selectionOrigin.current ?? { kind: "board-title" };
+    commitSessionSelection(null);
   };
 
   const toggleLive = () => {

@@ -230,3 +230,65 @@ test("Paused와 연결 오류에서는 상대 시각만 계속 흐른다", () =>
     assert.match(later.detail, /1:24 session/);
   }
 });
+
+test("목록 행과 글로벌 카드는 서로 다른 선택 접근성 계약을 사용한다", () => {
+  const session = rootSession("root-a", "running");
+  const rowMarkup = renderToStaticMarkup(createElement(SessionRow, {
+    session,
+    selected: true,
+    onSelect() {},
+    clock,
+    wallClock: clock,
+    changes: { childIds: [] },
+    collectedAt,
+  }));
+  const boardMarkup = renderToStaticMarkup(createElement(GlobalActivityBoard, {
+    sessions: [session],
+    onSelect() {},
+    clock,
+    wallClock: clock,
+    collectedAt,
+    isLive: true,
+    isConnected: true,
+    changes: {},
+  }));
+
+  assert.match(rowMarkup, /aria-pressed="true"/);
+  assert.match(rowMarkup, /aria-controls="session-detail"/);
+  const boardCard = boardMarkup.slice(
+    boardMarkup.indexOf("data-board-session-id"),
+    boardMarkup.indexOf("</button>"),
+  );
+  assert.match(boardCard, /aria-label="Open details for Session root-a"/);
+  assert.match(boardCard, /aria-controls="session-detail"/);
+  assert.doesNotMatch(boardCard, /aria-pressed/);
+});
+
+test("상세 제목은 프로그램 포커스를 받고 닫기 버튼을 제공한다", () => {
+  const session = rootSession("root-a", "running", {
+    plan: { tasks: [] },
+    goal: null,
+    skills: [],
+    tokens: { total: 0, root: 0, children: 0 },
+  });
+  const markup = renderToStaticMarkup(createElement(SessionDetail, {
+    session,
+    selectedChildId: null,
+    onSelectChild() {},
+    onClose() {},
+    onOpenCodex() {},
+    clock,
+    wallClock: clock,
+    changes: {
+      tokenKeys: [],
+      taskTitles: [],
+      childIds: [],
+      handoffChildIds: [],
+      activityIds: [],
+    },
+    collectedAt,
+  }));
+
+  assert.match(markup, /id="session-detail-title" tabindex="-1"/);
+  assert.match(markup, /aria-label="Close session details"/);
+});

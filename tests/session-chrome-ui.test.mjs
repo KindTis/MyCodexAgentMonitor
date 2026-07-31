@@ -131,7 +131,10 @@ test("상세 헤더는 현재 브랜치명과 세션명만 제목으로 표시�
   const heading = markup.slice(0, markup.indexOf("</header>"));
 
   assert.match(heading, /<p>feature\/session-heading<\/p>/);
-  assert.match(heading, /<h2>MyCodexAgentMonitor<\/h2>/);
+  assert.match(
+    heading,
+    /<h2 id="session-detail-title" tabindex="-1">MyCodexAgentMonitor<\/h2>/,
+  );
   assert.doesNotMatch(heading, /Selected session/);
   assert.doesNotMatch(heading, /<h2>Codex /);
 });
