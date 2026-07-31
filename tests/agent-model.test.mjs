@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  ACTIVITY_LANES,
   formatCostUsd,
   formatDuration,
   formatGoalStatus,
@@ -10,6 +11,8 @@ import {
   formatPercent,
   formatTokenCount,
   getDisplayedDuration,
+  getActivityBoardLanes,
+  getLatestSessionActivity,
   getPlanProgress,
   getRelativeTime,
   getRowScrollTop,
@@ -269,4 +272,134 @@ test("scrolls only enough to reveal a selected row in the rendered viewport", ()
     getRowScrollTop({ rowIndex: 7, rowHeight: 45, viewportHeight: 270, scrollTop: 45 }),
     90,
   );
+});
+
+test("모든 화면 상태를 고정된 6개 글로벌 레인에 정확히 한 번 배치한다", () => {
+  const sessions = [
+    ["needs", "needs_input"],
+    ["blocked", "blocked"],
+    ["failed", "failed"],
+    ["running", "running"],
+    ["waiting", "waiting"],
+    ["planning", "planning"],
+    ["queued", "queued"],
+    ["idle", "idle"],
+    ["paused", "paused"],
+    ["complete", "complete"],
+    ["cancelled", "cancelled"],
+    ["stopped", "stopped"],
+    ["unknown", "new-server-state"],
+  ].map(([id, status]) => ({ id, status }));
+
+  const lanes = getActivityBoardLanes(sessions);
+
+  assert.deepEqual(
+    ACTIVITY_LANES.map(({ id, label }) => [id, label]),
+    [
+      ["attention", "Attention"],
+      ["working", "Working"],
+      ["waiting", "Waiting"],
+      ["planning", "Planning"],
+      ["inactive", "Inactive"],
+      ["complete", "Complete"],
+    ],
+  );
+  assert.deepEqual(
+    Object.fromEntries(lanes.map(({ id, sessions: items }) => [
+      id,
+      items.map((session) => session.id),
+    ])),
+    {
+      attention: ["blocked", "failed", "needs"],
+      working: ["running"],
+      waiting: ["waiting"],
+      planning: ["planning", "queued"],
+      inactive: ["idle", "paused", "unknown"],
+      complete: ["cancelled", "complete", "stopped"],
+    },
+  );
+  assert.equal(
+    lanes.flatMap(({ sessions: items }) => items).length,
+    sessions.length,
+  );
+});
+
+test("글로벌 레인은 최근 활동, 시작 시각, ID 순으로 안정 정렬한다", () => {
+  const sessions = [
+    {
+      id: "missing",
+      status: "running",
+      startedAt: "2026-07-29T01:00:00Z",
+    },
+    {
+      id: "later-start",
+      status: "running",
+      lastActivityAt: "2026-07-29T02:00:00Z",
+      startedAt: "2026-07-29T01:30:00Z",
+    },
+    {
+      id: "a-id",
+      status: "running",
+      lastActivityAt: "2026-07-29T02:00:00Z",
+      startedAt: "2026-07-29T01:00:00Z",
+    },
+    {
+      id: "b-id",
+      status: "running",
+      lastActivityAt: "2026-07-29T02:00:00Z",
+      startedAt: "2026-07-29T01:00:00Z",
+    },
+    {
+      id: "latest",
+      status: "running",
+      lastActivityAt: "2026-07-29T03:00:00Z",
+    },
+  ];
+
+  const working = getActivityBoardLanes(sessions)
+    .find(({ id }) => id === "working")
+    .sessions;
+
+  assert.deepEqual(
+    working.map(({ id }) => id),
+    ["latest", "later-start", "a-id", "b-id", "missing"],
+  );
+  assert.deepEqual(
+    sessions.map(({ id }) => id),
+    ["missing", "later-start", "a-id", "b-id", "latest"],
+  );
+});
+
+test("카드는 activity의 최신 시각을 우선하고 항목이 없을 때만 currentActivity를 사용한다", () => {
+  const activities = [
+    { id: "older", label: "Reading files", at: "2026-07-29T03:00:00Z" },
+    { id: "newest", label: "Running tests", at: "2026-07-29T03:02:00Z" },
+  ];
+
+  assert.deepEqual(
+    getLatestSessionActivity({
+      activity: activities,
+      currentActivity: {
+        label: "Calling tool",
+        startedAt: "2026-07-29T03:03:00Z",
+      },
+    }),
+    activities[1],
+  );
+  assert.deepEqual(
+    getLatestSessionActivity({
+      activity: [],
+      currentActivity: {
+        label: "Calling tool",
+        startedAt: "2026-07-29T03:03:00Z",
+      },
+    }),
+    {
+      id: null,
+      label: "Calling tool",
+      at: "2026-07-29T03:03:00Z",
+    },
+  );
+  assert.equal(getLatestSessionActivity({ activity: [] }), null);
+  assert.deepEqual(activities.map(({ id }) => id), ["older", "newest"]);
 });

@@ -45,6 +45,29 @@ const OPERATIONAL_RANK = {
   stopped: 5,
 };
 
+export const ACTIVITY_LANES = [
+  {
+    id: "attention",
+    label: "Attention",
+    statuses: ["needs_input", "blocked", "failed"],
+  },
+  { id: "working", label: "Working", statuses: ["running"] },
+  { id: "waiting", label: "Waiting", statuses: ["waiting"] },
+  { id: "planning", label: "Planning", statuses: ["planning", "queued"] },
+  { id: "inactive", label: "Inactive", statuses: ["idle", "paused"] },
+  {
+    id: "complete",
+    label: "Complete",
+    statuses: ["complete", "cancelled", "stopped"],
+  },
+];
+
+const ACTIVITY_LANE_BY_STATUS = Object.fromEntries(
+  ACTIVITY_LANES.flatMap(({ id, statuses }) => (
+    statuses.map((status) => [status, id])
+  )),
+);
+
 export function normalizeStatus(status) {
   const normalized = String(status ?? "").toLowerCase();
   const aliased = STATUS_ALIASES[normalized] ?? normalized;
@@ -160,6 +183,41 @@ export function sortSessions(sessions, { key = "operational", direction = "asc" 
 
     return String(a.id ?? a.sessionId).localeCompare(String(b.id ?? b.sessionId));
   });
+}
+
+export function getActivityBoardLanes(sessions) {
+  const grouped = Object.fromEntries(
+    ACTIVITY_LANES.map(({ id }) => [id, []]),
+  );
+
+  for (const session of sortSessions(sessions)) {
+    const laneId = ACTIVITY_LANE_BY_STATUS[normalizeStatus(session.status)];
+    grouped[laneId].push(session);
+  }
+
+  return ACTIVITY_LANES.map((lane) => ({
+    ...lane,
+    sessions: grouped[lane.id],
+  }));
+}
+
+export function getLatestSessionActivity(session) {
+  const activities = session.activity ?? [];
+  if (activities.length) {
+    return activities.reduce((latest, activity) => (
+      (toTime(activity.at) ?? -Infinity) > (toTime(latest.at) ?? -Infinity)
+        ? activity
+        : latest
+    ));
+  }
+
+  return session.currentActivity?.label
+    ? {
+        id: null,
+        label: session.currentActivity.label,
+        at: session.currentActivity.startedAt ?? null,
+      }
+    : null;
 }
 
 export function getRelativeTime(lastActivityAt, now = new Date()) {
