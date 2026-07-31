@@ -42,3 +42,7 @@ Rules:
 - Do not make the whole selected-session detail an independent scroll area. Limit internal scrolling to long Plan Tasks, child-agent, and recent-activity lists.
 - Show Child Agents in five wrapping columns: agent name, state, session time, tasks, and Goal. Do not use horizontal scrolling or hover-revealed details.
 - Open a floating detail dialog when a child-agent row is clicked. Show current work, recent activity, applied skills, tasks, and Goal.
+- 루트 세션을 선택하지 않았을 때 오른쪽 영역에 Attention, Working, Waiting, Planning, Inactive, Complete의 6개 글로벌 활동 레인을 표시한다.
+- 최초 진입과 선택 세션 소멸 시 다른 세션을 자동 선택하지 않는다. 목록 행 재선택이나 상세 닫기는 글로벌 활동 보드로 돌아간다.
+- 글로벌 보드는 데스크톱 6열, 적층 폭 3열, 작은 화면 2열, 모바일 1열을 사용하며 데스크톱에서 레인 카드 영역만 내부 스크롤한다.
+- 글로벌 카드 이동과 최신 이벤트 강조는 적용된 스냅샷의 실제 변화에만 반응한다.
