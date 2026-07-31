@@ -7,6 +7,7 @@ import {
   mkdtemp,
   rm,
   stat,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -171,6 +172,37 @@ test("최근 session_meta에서 spawn child를 찾고 guardian과 미분류를 �
     parentThreadIds: ["root"],
     updatedAfterMs: newestMtime + 1,
   }), []);
+});
+
+test("mtime이 고정돼도 파일 크기가 바뀐 root session_meta를 찾는다", async (t) => {
+  const root = await createTempRoot(t);
+  const day = path.join(root, "sessions", "2026", "07", "26");
+  await mkdir(day, { recursive: true });
+  const file = path.join(day, "active-root.jsonl");
+  await writeFile(file, `${JSON.stringify(sessionMeta({
+    id: "active-root",
+    parentThreadId: null,
+    timestamp: "2026-07-26T05:00:00Z",
+    source: "cli",
+  }))}\n`, "utf8");
+  const staleTime = new Date("2026-07-26T05:00:00Z");
+  await utimes(file, staleTime, staleTime);
+  const knownFiles = new Map();
+  const options = {
+    codexHome: root,
+    parentThreadIds: [null],
+    updatedAfterMs: Date.parse("2026-07-26T06:00:00Z"),
+    knownFiles,
+  };
+
+  assert.deepEqual(await discoverChildCandidates(options), []);
+
+  await appendFile(file, '{"timestamp":"2026-07-26T06:00:01Z"}\n', "utf8");
+  await utimes(file, staleTime, staleTime);
+
+  const candidates = await discoverChildCandidates(options);
+
+  assert.deepEqual(candidates.map(({ id }) => id), ["active-root"]);
 });
 
 test("CODEX_HOME을 우선하고 없으면 USERPROFILE 기본 경로를 사용한다", () => {

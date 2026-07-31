@@ -100,8 +100,13 @@ function createFakeCatalog(initialThreads = []) {
       const data = params.ancestorThreadId
         ? sourceFiltered.filter((item) => isDescendant(item, params.ancestorThreadId))
         : sourceFiltered.filter((item) => item.parentThreadId == null);
+      const sortValue = (item) => (
+        params.sortKey === "recency_at"
+          ? item.recencyAt ?? item.updatedAt
+          : item.updatedAt
+      );
       const sorted = [...data].sort(
-        (a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id),
+        (a, b) => sortValue(b) - sortValue(a) || a.id.localeCompare(b.id),
       );
       const start = Number(params.cursor ?? 0);
       const end = Math.min(start + (params.limit ?? sorted.length), sorted.length);
@@ -480,6 +485,146 @@ test("시작 시 최근 미완료 루트 source만 등록하고 child는 부모 
     ({ sourceKinds }) => JSON.stringify(sourceKinds) === JSON.stringify(CHILD_SOURCE_KINDS),
   ));
   assert.ok(harness.appServer.readCalls.includes("boundary-root"));
+});
+
+test("catalog updatedAt이 오래돼도 recencyAt과 최근 JSONL 활동으로 root를 등록한다", async () => {
+  const staleRoot = thread("stale-active-root", {
+    updatedAt: unix("2026-07-26T05:30:00Z"),
+    recencyAt: unix("2026-07-26T06:00:01Z"),
+  });
+  const oldBlocker = thread("old-blocker", {
+    updatedAt: unix("2026-07-26T05:40:00Z"),
+    recencyAt: unix("2026-07-26T05:40:00Z"),
+  });
+  const harness = createStoreHarness({
+    threads: [oldBlocker, staleRoot],
+    startedAt: "2026-07-26T06:00:00Z",
+    initialRecords: {
+      "stale-active-root": [
+        sessionEvent("2026-07-26T05:40:00Z", "task_started", {
+          turn_id: "stale-turn",
+        }),
+        {
+          timestamp: "2026-07-26T06:00:01Z",
+          type: "response_item",
+          payload: {
+            type: "function_call",
+            name: "read_file",
+            arguments: '{"path":"src/App.jsx"}',
+            call_id: "recent-read",
+          },
+        },
+      ],
+    },
+  });
+
+  const snapshot = await harness.store.initialize();
+
+  assert.deepEqual(snapshot.sessions.map(({ id }) => id), ["stale-active-root"]);
+});
+
+test("catalog 경계 밖 root도 JSONL 파일 크기 변화 후보로 등록한다", async () => {
+  const staleRoot = thread("stale-active-root", {
+    updatedAt: unix("2026-07-26T05:30:00Z"),
+    recencyAt: unix("2026-07-26T05:30:00Z"),
+  });
+  let rootScanCount = 0;
+  const harness = createStoreHarness({
+    threads: [staleRoot],
+    startedAt: "2026-07-26T06:00:00Z",
+    initialRecords: {
+      "stale-active-root": [sessionEvent("2026-07-26T05:30:00Z", "task_started", {
+        turn_id: "stale-active-root-turn",
+      })],
+    },
+    discoverChildren: async ({ knownFiles }) => {
+      if (!knownFiles) return [];
+      rootScanCount += 1;
+      knownFiles.set(staleRoot.path, rootScanCount);
+      return rootScanCount === 1 ? [] : [structuredClone(staleRoot)];
+    },
+  });
+
+  let snapshot = await harness.store.initialize();
+  assert.deepEqual(snapshot.sessions, []);
+
+  harness.setNow("2026-07-26T06:00:02Z");
+  harness.appendRecord("stale-active-root", {
+    timestamp: "2026-07-26T06:00:01Z",
+    type: "response_item",
+    payload: {
+      type: "function_call",
+      name: "read_file",
+      arguments: '{"path":"src/App.jsx"}',
+      call_id: "recent-read",
+    },
+  });
+  snapshot = await harness.store.collect();
+
+  assert.deepEqual(snapshot.sessions.map(({ id }) => id), ["stale-active-root"]);
+});
+
+test("JSONL 변화 root의 App Server read 실패에서는 파일 크기 baseline을 전진시키지 않는다", async () => {
+  const staleRoot = thread("retry-root", {
+    updatedAt: unix("2026-07-26T05:30:00Z"),
+    recencyAt: unix("2026-07-26T05:30:00Z"),
+  });
+  let fileSize = 1;
+  const harness = createStoreHarness({
+    threads: [staleRoot],
+    startedAt: "2026-07-26T06:00:00Z",
+    initialRecords: {
+      "retry-root": [sessionEvent("2026-07-26T05:30:00Z", "task_started", {
+        turn_id: "retry-root-turn",
+      })],
+    },
+    discoverChildren: async ({ knownFiles }) => {
+      if (!knownFiles) return [];
+      const previousSize = knownFiles.get(staleRoot.path);
+      knownFiles.set(staleRoot.path, fileSize);
+      return previousSize != null && previousSize !== fileSize
+        ? [structuredClone(staleRoot)]
+        : [];
+    },
+  });
+  await harness.store.initialize();
+
+  fileSize = 2;
+  harness.appendRecord("retry-root", {
+    timestamp: "2026-07-26T06:00:01Z",
+    type: "response_item",
+    payload: {
+      type: "function_call",
+      name: "read_file",
+      arguments: '{"path":"src/App.jsx"}',
+      call_id: "recent-read",
+    },
+  });
+  harness.appServer.setFailRead("retry-root");
+  let snapshot = await harness.store.collect();
+  assert.equal(snapshot.connectionStatus, "error");
+
+  harness.appServer.setFailRead("retry-root", false);
+  snapshot = await harness.store.collect();
+
+  assert.deepEqual(snapshot.sessions.map(({ id }) => id), ["retry-root"]);
+});
+
+test("recencyAt 경계에 도달하면 다음 catalog 페이지를 조회하지 않는다", async () => {
+  const harness = createStoreHarness({
+    threads: Array.from({ length: THREAD_PAGE_SIZE + 1 }, (_, index) => thread(`old-${index}`, {
+      updatedAt: unix("2026-07-26T05:40:00Z"),
+      recencyAt: unix("2026-07-26T05:40:00Z"),
+    })),
+    startedAt: "2026-07-26T06:00:00Z",
+  });
+
+  await harness.store.initialize();
+
+  const rootListCalls = harness.appServer.listCalls.filter(
+    ({ sourceKinds }) => JSON.stringify(sourceKinds) === JSON.stringify(ROOT_SOURCE_KINDS),
+  );
+  assert.equal(rootListCalls.length, 1);
 });
 
 test("Store 생성 뒤 수집 전에 시작·완료된 root와 child도 등록한다", async () => {

@@ -127,6 +127,7 @@ export async function discoverChildCandidates({
   codexHome,
   parentThreadIds,
   updatedAfterMs = 0,
+  knownFiles = null,
 }) {
   const parents = new Set(parentThreadIds);
   if (!parents.size) return [];
@@ -140,12 +141,20 @@ export async function discoverChildCandidates({
   }
 
   const candidates = [];
+  const initialScan = knownFiles?.size === 0;
   // ponytail: 최근 파일만 stat하는 O(n) scan이다. 3초 수집이 측정상 느릴 때만 디렉터리 watermark를 추가한다.
   for (const entry of entries) {
     if (!entry.isFile() || path.extname(entry.name) !== ".jsonl") continue;
     const filePath = path.join(entry.parentPath, entry.name);
     const metadata = await fs.stat(filePath);
-    if (metadata.mtimeMs < updatedAfterMs) continue;
+    if (knownFiles) {
+      const previousSize = knownFiles.get(filePath);
+      knownFiles.set(filePath, metadata.size);
+      const changed = previousSize == null || previousSize !== metadata.size;
+      if (initialScan ? metadata.mtimeMs < updatedAfterMs : !changed) continue;
+    } else if (metadata.mtimeMs < updatedAfterMs) {
+      continue;
+    }
     const record = await readFirstJsonRecord(filePath);
     if (record?.type !== "session_meta") continue;
 

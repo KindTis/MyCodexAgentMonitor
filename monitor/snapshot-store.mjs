@@ -33,6 +33,7 @@ export class SnapshotStore {
   #threads = new Map();
   #goals = new Map();
   #childCandidates = new Map();
+  #sessionFileSizes = new Map();
   #catalogWatermark = null;
   #snapshot = {
     collectedAt: null,
@@ -104,6 +105,7 @@ export class SnapshotStore {
     const childCandidates = new Map(
       [...this.#childCandidates].map(([id, candidate]) => [id, structuredClone(candidate)]),
     );
+    const sessionFileSizes = new Map(this.#sessionFileSizes);
     let appServerFailed = false;
     let catalogSucceeded = true;
 
@@ -119,7 +121,23 @@ export class SnapshotStore {
         appServerFailed = true;
         catalogSucceeded = false;
       }
-      const discoveredRootIds = new Set(discoveredRoots.map(({ id }) => id));
+      let discoveredFromJsonlRoots;
+      try {
+        discoveredFromJsonlRoots = await this.discoverChildren({
+          codexHome: this.codexHome,
+          parentThreadIds: [null],
+          updatedAfterMs: boundary * 1000,
+          knownFiles: sessionFileSizes,
+        });
+      } catch (error) {
+        throw new SessionReadFailure({ cause: error });
+      }
+      const discoveredRootIds = new Set([
+        ...discoveredRoots.map(({ id }) => id),
+        ...discoveredFromJsonlRoots
+          .filter(({ source }) => ROOT_SOURCE_KINDS.includes(source))
+          .map(({ id }) => id),
+      ]);
       const rootIds = new Set([...registeredRoots, ...discoveredRootIds]);
 
       for (const rootId of rootIds) {
@@ -305,6 +323,7 @@ export class SnapshotStore {
       this.#threads = threads;
       this.#goals = goals;
       this.#childCandidates = childCandidates;
+      if (!appServerFailed) this.#sessionFileSizes = sessionFileSizes;
       if (catalogSucceeded) this.#catalogWatermark = candidateWatermark;
       this.#snapshot = snapshot;
       this.tailer.commitBatch();
@@ -328,13 +347,14 @@ export class SnapshotStore {
       const response = await this.appServer.listThreads({
         ...(ancestorThreadId ? { ancestorThreadId } : {}),
         cursor,
-        sortKey: "updated_at",
+        sortKey: "recency_at",
         sortDirection: "desc",
         limit: THREAD_PAGE_SIZE,
         sourceKinds,
       });
       for (const item of response.data ?? []) {
-        if (item.updatedAt < boundary) {
+        const recencyAt = item.recencyAt ?? item.updatedAt;
+        if (recencyAt < boundary) {
           reachedBoundary = true;
           break;
         }
@@ -372,12 +392,13 @@ export class SnapshotStore {
 
   #canRegister(thread, observation, initial) {
     const latestTurn = thread.turns?.at(-1);
-    const startEvidence = [
+    const activityEvidence = [
       epochSecondsToMs(thread.createdAt),
       epochSecondsToMs(latestTurn?.startedAt),
       Date.parse(observation.startedAt),
+      Date.parse(observation.lastActivityAt),
     ].filter(Number.isFinite);
-    if (startEvidence.some((value) => value >= this.monitorStartedAt)) return true;
+    if (activityEvidence.some((value) => value >= this.monitorStartedAt)) return true;
     if (!initial) return false;
 
     return (
