@@ -45,7 +45,9 @@ import {
   formatLocalTime,
   formatPercent,
   formatTokenCount,
+  getActivityBoardLanes,
   getDisplayedDuration,
+  getLatestSessionActivity,
   getPlanProgress,
   getRelativeTime,
   getRowScrollTop,
@@ -112,6 +114,14 @@ const EMPTY_SNAPSHOT = {
   },
 };
 
+const EMPTY_CHANGES = {
+  tokenKeys: [],
+  taskTitles: [],
+  childIds: [],
+  handoffChildIds: [],
+  activityIds: [],
+};
+
 function AgentMark({ item, size = 34, active = false, handoff = false }) {
   const child = item.parentSessionId != null;
   const Icon = child ? Robot : Path;
@@ -173,12 +183,16 @@ export function SessionRow({
   selected,
   onSelect,
   clock,
+  wallClock = clock,
   changes,
   collectedAt,
 }) {
   const metrics = getSessionMetrics(session);
   const status = normalizeStatus(session.status);
-  const relativeTime = getRelativeTime(session.lastActivityAt, new Date(clock));
+  const relativeTime = getRelativeTime(
+    session.lastActivityAt,
+    new Date(wallClock),
+  );
   const duration = getDisplayedDuration(session, collectedAt, clock);
   const attention = ["needs_input", "blocked", "failed"].includes(status);
 
@@ -186,7 +200,7 @@ export function SessionRow({
     <button
       type="button"
       className={`session-row session-row--${status} ${selected ? "session-row--selected" : ""} ${attention ? "session-row--attention" : ""}`}
-      onClick={() => onSelect(session.id)}
+      onClick={() => onSelect(session.id, "list")}
       aria-pressed={selected}
       aria-controls="session-detail"
       data-session-id={session.id}
@@ -245,6 +259,148 @@ export function SessionRow({
         <CaretRight className="session-direction" size={16} aria-hidden="true" />
       </span>
     </button>
+  );
+}
+
+function GlobalSessionCard({
+  session,
+  onSelect,
+  clock,
+  wallClock,
+  collectedAt,
+  connectedWorking,
+  changes,
+}) {
+  const latestActivity = getLatestSessionActivity(session);
+  const latestActivityChanged = Boolean(
+    latestActivity?.id
+    && changes.activityIds.includes(latestActivity.id),
+  );
+  const duration = getDisplayedDuration(session, collectedAt, clock);
+  const relativeTime = getRelativeTime(
+    latestActivity?.at,
+    new Date(wallClock),
+  );
+  const workTitle = session.currentWork?.title
+    || session.assignedWork
+    || session.session
+    || "No assigned work";
+  const accessibleSessionName = session.session
+    || session.projectName
+    || session.id;
+  const activelyWorking = Boolean(
+    connectedWorking
+    && session.isWorking
+    && session.statusBasis !== "inferred",
+  );
+
+  return (
+    <button
+      type="button"
+      className="global-session-card"
+      data-board-session-id={session.id}
+      aria-label={`Open details for ${accessibleSessionName}`}
+      aria-controls="session-detail"
+      onClick={() => onSelect(session.id, "board")}
+    >
+      <span className="global-card-identity">
+        <strong>{session.projectName ?? "Unknown project"}</strong>
+        <small><GitBranch size={11} /> {session.gitBranch ?? "No Git branch"}</small>
+      </span>
+      <StatusBadge status={session.status} statusBasis={session.statusBasis} />
+      <span className="global-card-work">{workTitle}</span>
+      <span
+        key={latestActivityChanged
+          ? `${latestActivity.id}-${collectedAt}`
+          : latestActivity?.id ?? "no-activity"}
+        className={`global-card-activity ${latestActivityChanged
+          ? "global-card-activity--updated"
+          : ""}`}
+      >
+        {latestActivity?.label ?? "No active tool"}
+        {relativeTime ? ` · ${relativeTime}` : ""}
+      </span>
+      <span className="global-card-time">
+        <i
+          className={activelyWorking
+            ? "global-card-dot global-card-dot--working"
+            : "global-card-dot"}
+          aria-hidden="true"
+        />
+        {formatDuration(duration)} session
+      </span>
+    </button>
+  );
+}
+
+export function GlobalActivityBoard({
+  sessions,
+  onSelect,
+  clock,
+  wallClock,
+  collectedAt,
+  isLive,
+  isConnected,
+  changes,
+}) {
+  const lanes = useMemo(
+    () => getActivityBoardLanes(sessions),
+    [sessions],
+  );
+  const snapshotAge = getRelativeTime(collectedAt, new Date(wallClock));
+  const connectedWorking = isLive && isConnected && Boolean(collectedAt);
+
+  return (
+    <section
+      className="global-board"
+      aria-labelledby="global-activity-title"
+    >
+      <header className="global-board-heading">
+        <h2 id="global-activity-title" tabIndex={-1}>Global activity</h2>
+        <div className="global-board-meta">
+          <span>{isLive ? "Live" : "Paused"}</span>
+          <time>Last applied {snapshotAge || "unavailable"}</time>
+        </div>
+      </header>
+
+      {sessions.length ? (
+        <div className="global-lanes">
+          {lanes.map((lane) => (
+            <section
+              className={`activity-lane activity-lane--${lane.id}`}
+              key={lane.id}
+              aria-labelledby={`activity-lane-${lane.id}`}
+            >
+              <header className="activity-lane-heading">
+                <h3 id={`activity-lane-${lane.id}`}>{lane.label}</h3>
+                <span>{lane.sessions.length}</span>
+              </header>
+              <div className="activity-lane-cards">
+                {lane.sessions.map((session) => (
+                  <GlobalSessionCard
+                    key={session.id}
+                    session={session}
+                    onSelect={onSelect}
+                    clock={clock}
+                    wallClock={wallClock}
+                    collectedAt={collectedAt}
+                    connectedWorking={connectedWorking}
+                    changes={changes[session.id] ?? EMPTY_CHANGES}
+                  />
+                ))}
+                {!lane.sessions.length && (
+                  <p className="activity-lane-empty">No sessions</p>
+                )}
+              </div>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <p className="global-board-empty">
+          There are no sessions in the current server snapshot.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -539,13 +695,18 @@ export function SessionDetail({
   session,
   selectedChildId,
   onSelectChild,
+  onClose,
   onOpenCodex,
   clock,
+  wallClock = clock,
   changes,
   collectedAt,
 }) {
   const progress = getPlanProgress(session.plan);
-  const relativeTime = getRelativeTime(session.lastActivityAt, new Date(clock));
+  const relativeTime = getRelativeTime(
+    session.lastActivityAt,
+    new Date(wallClock),
+  );
   const duration = getDisplayedDuration(session, collectedAt, clock);
   const changedTokenKeys = changes.tokenKeys;
 
@@ -563,6 +724,14 @@ export function SessionDetail({
           <StatusBadge status={session.status} statusBasis={session.statusBasis} />
           <span>{formatDuration(duration)} session</span>
           <span>Last update {relativeTime || "unavailable"}</span>
+          <button
+            type="button"
+            className="detail-close"
+            aria-label="Close session details"
+            onClick={onClose}
+          >
+            <X size={14} />
+          </button>
           <button type="button" onClick={onOpenCodex}>
             <ArrowSquareOut size={14} />
             Open in Codex
@@ -897,11 +1066,15 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (visibleSessions.some((session) => session.id === selectedSessionId)) return;
-    if (selectedSessionId) {
-      setSelectionNotice("The selected session is no longer in the current server snapshot.");
-    }
-    setSelectedSessionId(visibleSessions[0]?.id ?? null);
+    if (
+      !selectedSessionId
+      || visibleSessions.some((session) => session.id === selectedSessionId)
+    ) return;
+
+    setSelectionNotice(
+      "The selected session is no longer in the current server snapshot.",
+    );
+    setSelectedSessionId(null);
     setSelectedChildId(null);
   }, [selectedSessionId, visibleSessions]);
 
@@ -961,8 +1134,14 @@ export function App() {
     previousRects.current = nextRects;
   }, [changes, snapshot.collectedAt, visibleSessions]);
 
-  const selectSession = (id) => {
-    setSelectedSessionId(id);
+  const selectSession = (id, source = "list") => {
+    const nextId = source === "list" && id === selectedSessionId ? null : id;
+    setSelectedSessionId(nextId);
+    setSelectedChildId(null);
+  };
+
+  const closeSession = () => {
+    setSelectedSessionId(null);
     setSelectedChildId(null);
   };
 
@@ -992,14 +1171,6 @@ export function App() {
     ? feedStatus.connectionStatus
     : "error";
   const feedAge = getRelativeTime(feedStatus.lastSuccessfulAt, new Date());
-  const emptyChanges = {
-    tokenKeys: [],
-    taskTitles: [],
-    childIds: [],
-    handoffChildIds: [],
-    activityIds: [],
-  };
-
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -1109,7 +1280,8 @@ export function App() {
                     selected={session.id === selectedSessionId}
                     onSelect={selectSession}
                     clock={clock}
-                    changes={changes[session.id] ?? emptyChanges}
+                    wallClock={wallClock}
+                    changes={changes[session.id] ?? EMPTY_CHANGES}
                     collectedAt={snapshot.collectedAt}
                   />
                 ))}
@@ -1121,17 +1293,30 @@ export function App() {
           </div>
         </section>
 
-        {selectedSession && (
+        {selectedSession ? (
           <SessionDetail
             session={selectedSession}
             selectedChildId={selectedChildId}
             onSelectChild={setSelectedChildId}
+            onClose={closeSession}
             onOpenCodex={() => {
               window.location.href = "codex://threads/" + selectedSession.threadId;
             }}
             clock={clock}
-            changes={changes[selectedSession.id] ?? emptyChanges}
+            wallClock={wallClock}
+            changes={changes[selectedSession.id] ?? EMPTY_CHANGES}
             collectedAt={snapshot.collectedAt}
+          />
+        ) : (
+          <GlobalActivityBoard
+            sessions={visibleSessions}
+            onSelect={selectSession}
+            clock={clock}
+            wallClock={wallClock}
+            collectedAt={snapshot.collectedAt}
+            isLive={isLive}
+            isConnected={connectionStatus === "connected"}
+            changes={changes}
           />
         )}
       </div>
