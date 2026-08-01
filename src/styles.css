@@ -512,9 +512,13 @@ time,
   display: contents;
 }
 
-.session-state > .status-badge {
+.session-status {
+  display: grid;
+  min-width: 0;
   grid-area: state;
-  justify-self: end;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
 }
 
 .session-activity {
@@ -575,7 +579,8 @@ time,
 
 .session-agent small,
 .session-assignment small,
-.session-state > small,
+.session-model,
+.session-activity,
 .session-time small {
   overflow: hidden;
   color: var(--muted);
@@ -583,6 +588,10 @@ time,
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.session-model {
+  max-width: 100%;
 }
 
 .session-assignment strong {
@@ -929,10 +938,10 @@ time,
 .global-card-child-tag {
   flex: 0 0 auto;
   padding: 3px 6px;
-  border: 1px solid color-mix(in srgb, var(--violet) 42%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cyan) 42%, transparent);
   border-radius: 5px;
-  color: var(--violet);
-  background: rgb(167 139 250 / 10%);
+  color: var(--cyan);
+  background: rgb(56 189 248 / 10%);
   font-size: 9px;
   line-height: 1;
 }
@@ -941,27 +950,24 @@ time,
   align-items: flex-end;
 }
 
-.global-card-child-agent {
-  display: grid;
+.global-card-agent {
+  display: block;
   min-width: 0;
   margin-left: auto;
-  gap: 2px;
-  text-align: right;
-}
-
-.global-card-child-agent strong,
-.global-card-child-agent small {
   overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.global-card-child-agent strong {
+.global-card-agent strong {
   color: var(--violet);
   font-size: 9px;
 }
 
-.global-card-child-agent small {
+.global-card-agent small {
   color: var(--muted);
   font-size: 8px;
 }
@@ -994,6 +1000,10 @@ time,
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.global-card-time {
+  flex: 0 0 auto;
 }
 
 .global-card-identity small,
@@ -2087,11 +2097,16 @@ time,
     gap: 4px;
   }
 
-  .session-state > .status-badge,
+  .session-status,
   .session-activity {
     width: auto;
     grid-area: auto;
     justify-self: start;
+  }
+
+  .session-status {
+    justify-items: start;
+    text-align: left;
   }
 
   .session-agent,
@@ -2206,9 +2221,11 @@ time,
     display: contents;
   }
 
-  .session-state > .status-badge {
+  .session-status {
     grid-area: state;
-    justify-self: end;
+    justify-self: auto;
+    justify-items: end;
+    text-align: right;
   }
 
   .session-activity {

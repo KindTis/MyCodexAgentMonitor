@@ -206,7 +206,7 @@ test("글로벌 보드는 데스크톱에서 4열과 레인별 내부 스크롤�
   assert.match(cards, /overflow-y: auto/);
 });
 
-test("자식 글로벌 카드는 Child 태그와 에이전트 정보를 양 끝에 배치한다", () => {
+test("글로벌 카드 footer는 시간과 한 줄 에이전트 정보를 양 끝에 배치한다", () => {
   const sharedMatch = css.match(
     /\.global-card-heading,\s*\.global-card-footer\s*\{([^}]+)\}/,
   );
@@ -216,12 +216,38 @@ test("자식 글로벌 카드는 Child 태그와 에이전트 정보를 양 끝�
   assert.match(shared, /justify-content: space-between/);
 
   const tag = declarations(".global-card-child-tag");
-  assert.match(tag, /color: var\(--violet\)/);
-  assert.match(tag, /background: rgb\(167 139 250 \/ 10%\)/);
+  assert.match(tag, /color: var\(--cyan\)/);
+  assert.match(tag, /background: rgb\(56 189 248 \/ 10%\)/);
 
-  const identity = declarations(".global-card-child-agent");
+  const identity = declarations(".global-card-agent");
   assert.match(identity, /margin-left: auto/);
   assert.match(identity, /text-align: right/);
+  assert.match(identity, /overflow: hidden/);
+  assert.match(identity, /text-overflow: ellipsis/);
+  assert.match(identity, /white-space: nowrap/);
+  assert.match(declarations(".global-card-time"), /flex: 0 0 auto/);
+});
+
+test("좌측 목록은 상태 아래 모델을 우측 정렬하고 기존 시간 행을 유지한다", () => {
+  const status = declarations(".session-status");
+  assert.match(status, /display: grid/);
+  assert.match(status, /grid-area: state/);
+  assert.match(status, /justify-items: end/);
+  assert.match(status, /text-align: right/);
+
+  const model = declarations(".session-model");
+  assert.match(model, /max-width: 100%/);
+
+  const sharedText = css.match(
+    /\.session-agent small,\s*\.session-assignment small,\s*\.session-model,\s*\.session-activity,\s*\.session-time small\s*\{([^}]+)\}/,
+  );
+  assert.ok(sharedText, "missing shared session text rule");
+  assert.match(sharedText[1], /text-overflow: ellipsis/);
+  assert.match(sharedText[1], /white-space: nowrap/);
+
+  const row = declarations(".session-row");
+  assert.match(row, /"agent agent state state"/);
+  assert.match(row, /"assignment assignment time time"/);
 });
 
 test("글로벌 보드는 적층·작은 화면에서 2열, 모바일에서 1열로 줄어든다", () => {
