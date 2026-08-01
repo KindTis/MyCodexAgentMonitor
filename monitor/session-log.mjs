@@ -317,7 +317,7 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
   observation.activity = observation.activity
     .filter((item, index, items) => items.findIndex(({ id }) => id === item.id) === index)
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
-    .slice(0, 4);
+    .slice(0, 10);
   observation.messages = observation.messages
     .filter((item, index, items) => items.findIndex(({ id }) => id === item.id) === index)
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))

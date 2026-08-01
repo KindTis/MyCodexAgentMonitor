@@ -466,6 +466,25 @@ test("최근 assistant 메시지 원문을 최신순 10개까지 수집한다", 
   assert.doesNotMatch(JSON.stringify(result.messages), /사용자|비공개|내부 에이전트/);
 });
 
+test("Recent Activity를 최신순 10개까지 수집한다", () => {
+  const calls = Array.from({ length: 11 }, (_, index) => execCall(
+    `2026-08-01T19:02:${String(index + 1).padStart(2, "0")}Z`,
+    'const result = await tools.shell_command({ command: "npm.cmd test" }); text(result);',
+    `activity-${index + 1}`,
+  ));
+  const result = reduceThreadRecords(
+    null,
+    [event("2026-08-01T19:02:00Z", "task_started", { turn_id: "current" }), ...calls],
+    activeThread("current"),
+    Date.parse("2026-08-01T19:02:12Z"),
+  );
+
+  assert.deepEqual(result.activity.map(({ id }) => id), [
+    "activity-11", "activity-10", "activity-9", "activity-8", "activity-7",
+    "activity-6", "activity-5", "activity-4", "activity-3", "activity-2",
+  ]);
+});
+
 test("도구 입력을 안전하고 읽을 수 있는 Recent Activity로 요약한다", () => {
   const cases = [
     {

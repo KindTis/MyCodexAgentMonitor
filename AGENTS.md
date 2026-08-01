@@ -49,7 +49,7 @@ Rules:
 - 루트와 Child Agent의 Recent activity는 `exec`, `wait` 같은 내부 도구명 대신 안전하게 요약한 명령·대기 대상·작업 수를 표시하고 비밀값은 노출하지 않는다. 실제 새 activity만 강조한다.
 - Do not make the whole selected-session detail an independent scroll area. Limit internal scrolling to long Plan Tasks, child-agent, recent-message, and recent-activity lists.
 - Show Child Agents in five wrapping columns: agent name, state, session time, tasks, and Goal. Do not use horizontal scrolling or hover-revealed details.
-- Open a floating detail dialog when a child-agent row is clicked. Show current work, recent messages, recent activity, applied skills, tasks, and Goal.
+- Open a floating detail dialog when a child-agent row is clicked. Keep Recent activity under Current work in the left half of the first row and show Recent messages as the right-half card; keep applied skills, tasks, and Goal in the second row.
 - 루트 세션을 선택하지 않았을 때 오른쪽 영역에 Active, Waiting, Inactive, Ended의 4개 글로벌 활동 레인을 표시한다. Planning/Queued는 Active, Needs input/Blocked는 Waiting, Failed는 Ended에 포함하되 각 상태 배지 색상은 유지한다.
 - Global Activity에는 루트와 자식 에이전트를 각각 별도 카드로 표시한다. 자식 카드는 부모의 프로젝트명·브랜치명·세션명을 사용하고 클릭 시 기존 Child Agent 상세 다이얼로그를 바로 연다. Child 태그는 Complete와 구분되는 시안을 사용한다. 카드 마지막 줄은 세션 시간을 좌측에 두고, 루트는 모델명, 자식은 `닉네임 / 모델명`을 우측 한 줄로 표시한다. 좌측 루트 목록의 오른쪽 열은 상태 태그, 모델명, 세션 경과 시간, Started 시각 순서로 우측 정렬한다.
 - 최초 진입과 선택 세션 소멸 시 다른 세션을 자동 선택하지 않는다. 목록 행 재선택이나 상세 닫기는 글로벌 활동 보드로 돌아간다.

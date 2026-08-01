@@ -1812,7 +1812,7 @@ time,
 }
 
 .child-dialog-grid > .child-dialog-current,
-.child-dialog-grid > .activity-card {
+.child-dialog-grid > .child-dialog-messages {
   grid-column: span 3;
 }
 
@@ -1858,7 +1858,7 @@ time,
   font-size: 10px;
 }
 
-.current-work-messages-header {
+.current-work-section-header {
   margin-top: 18px;
   padding-top: 12px;
   border-top: 1px solid var(--line);

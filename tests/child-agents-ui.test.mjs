@@ -126,4 +126,10 @@ test("선택한 Child Agent의 합의된 상세 정보를 dialog에 표시한다
   assert.equal(markup.match(/class="message-button"/g)?.length, 10);
   assert.equal(markup.match(/message-item--updated/g)?.length, 1);
   assert.equal(markup.match(/activity-item--updated/g)?.length, 1);
+  const currentWork = markup.indexOf('class="detail-card child-dialog-current"');
+  const recentActivity = markup.indexOf("Recent activity", currentWork);
+  const messageCard = markup.indexOf('class="detail-card child-dialog-messages"');
+  const recentMessages = markup.indexOf("Recent messages", messageCard);
+  assert.ok(currentWork >= 0 && recentActivity > currentWork);
+  assert.ok(messageCard > recentActivity && recentMessages > messageCard);
 });

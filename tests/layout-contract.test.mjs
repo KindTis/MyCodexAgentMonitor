@@ -140,7 +140,7 @@ test("Child Agent 상세는 60/40 두 행과 50/50·3등분 열을 사용한다"
   );
   assert.match(
     css,
-    /\.child-dialog-grid > \.child-dialog-current,\s*\.child-dialog-grid > \.activity-card\s*\{[^}]*grid-column: span 3/s,
+    /\.child-dialog-grid > \.child-dialog-current,\s*\.child-dialog-grid > \.child-dialog-messages\s*\{[^}]*grid-column: span 3/s,
   );
 });
 

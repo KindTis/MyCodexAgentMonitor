@@ -598,7 +598,12 @@ function TaskList({ plan, collectedAt, changedTasks = [] }) {
   );
 }
 
-function RecentMessages({ ownerId, messages = [], changedMessageIds = [] }) {
+function RecentMessages({
+  ownerId,
+  messages = [],
+  changedMessageIds = [],
+  nested = true,
+}) {
   const [messagePopover, setMessagePopover] = useState(null);
   const popoverId = `recent-message-popover-${ownerId}`;
 
@@ -637,7 +642,7 @@ function RecentMessages({ ownerId, messages = [], changedMessageIds = [] }) {
 
   return (
     <>
-      <div className="card-header current-work-messages-header">
+      <div className={`card-header ${nested ? "current-work-section-header" : ""}`.trim()}>
         <span><Robot size={16} /> Recent messages</span>
         <b>{messages.length}</b>
       </div>
@@ -769,15 +774,7 @@ function ChildAgentDialog({ child, changes, onClose, collectedAt, clock }) {
             <StatusBadge status={child.status} statusBasis={child.statusBasis} />
             <small>{child.currentActivity?.label ?? "No active tool"}</small>
           </div>
-          <RecentMessages
-            ownerId={child.id}
-            messages={child.messages}
-            changedMessageIds={changes.messageIds}
-          />
-        </article>
-
-        <article className="detail-card activity-card">
-          <header className="card-header">
+          <header className="card-header current-work-section-header">
             <span><Pulse size={16} /> Recent activity</span>
             <b>Local</b>
           </header>
@@ -798,6 +795,15 @@ function ChildAgentDialog({ child, changes, onClose, collectedAt, clock }) {
           ) : (
             <p className="empty-copy">No recent tool activity was observed.</p>
           )}
+        </article>
+
+        <article className="detail-card child-dialog-messages">
+          <RecentMessages
+            ownerId={child.id}
+            messages={child.messages}
+            changedMessageIds={changes.messageIds}
+            nested={false}
+          />
         </article>
 
         <article className={`detail-card goal-card ${child.goal ? "" : "goal-card--empty"}`}>
