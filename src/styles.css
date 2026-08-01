@@ -11,6 +11,7 @@
   --line: #283144;
   --line-strong: #3a465c;
   --text: #f2f5fa;
+  --session-title: #dce3ef;
   --secondary: #a8b2c3;
   --muted: #7c8799;
   --faint: #667184;
@@ -962,6 +963,14 @@ time,
   overflow-wrap: anywhere;
 }
 
+.global-card-session {
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .session-agent strong,
 .global-card-identity strong {
   color: var(--text);
@@ -973,8 +982,13 @@ time,
 }
 
 .session-assignment strong,
+.global-card-session {
+  color: var(--session-title);
+}
+
+.session-assignment small,
 .global-card-work {
-  color: color-mix(in srgb, var(--blue) 80%, var(--text));
+  color: var(--secondary);
 }
 
 .session-activity,

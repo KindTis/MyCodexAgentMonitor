@@ -102,6 +102,26 @@ test("글로벌 보드는 루트 카드를 4개 고정 레인에 한 번씩 렌�
   assert.doesNotMatch(markup, /data-board-session-id="[^"]+"[^>]*aria-pressed/);
 });
 
+test("글로벌 카드는 세션명과 현재 작업을 별도 항목으로 렌더링한다", () => {
+  const session = rootSession("working", "running", {
+    session: "Color palette session",
+    currentWork: { title: "Review the latest color feedback" },
+  });
+  const markup = renderToStaticMarkup(createElement(GlobalActivityBoard, {
+    sessions: [session],
+    onSelect() {},
+    clock,
+    wallClock: clock,
+    collectedAt,
+    isLive: true,
+    isConnected: true,
+    changes: { working: { activityIds: [] } },
+  }));
+
+  assert.match(markup, /class="global-card-session">Color palette session<\/span>/);
+  assert.match(markup, /class="global-card-work">Review the latest color feedback<\/span>/);
+});
+
 test("루트 세션이 없으면 레인 대신 보드 전체 빈 상태를 표시한다", () => {
   const markup = renderToStaticMarkup(createElement(GlobalActivityBoard, {
     sessions: [],

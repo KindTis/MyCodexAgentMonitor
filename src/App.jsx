@@ -290,7 +290,6 @@ function GlobalSessionCard({
   );
   const workTitle = session.currentWork?.title
     || session.assignedWork
-    || session.session
     || "No assigned work";
   const accessibleSessionName = session.session
     || session.projectName
@@ -315,6 +314,9 @@ function GlobalSessionCard({
         <small><GitBranch size={11} /> {session.gitBranch ?? "No Git branch"}</small>
       </span>
       <StatusBadge status={session.status} statusBasis={session.statusBasis} />
+      <span className="global-card-session">
+        {session.session || "Untitled session"}
+      </span>
       <span className="global-card-work">{workTitle}</span>
       <span
         key={latestActivityChanged
