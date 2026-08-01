@@ -1,8 +1,12 @@
 import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const CCUSAGE_TIMEOUT_MS = 5000;
+const CCUSAGE_CLI_PATH = fileURLToPath(
+  new URL("../node_modules/ccusage/src/cli.js", import.meta.url),
+);
 const USAGE_TIME_ZONE = "Asia/Seoul";
 const LOCAL_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
@@ -98,8 +102,8 @@ export function parseCodexRateLimits(payload) {
 
 export async function readCcusageDaily(now = new Date(), run = execFileAsync) {
   const { stdout } = await run(
-    process.env.ComSpec ?? "cmd.exe",
-    ["/d", "/s", "/c", `ccusage codex daily --json --timezone ${USAGE_TIME_ZONE}`],
+    process.execPath,
+    [CCUSAGE_CLI_PATH, "codex", "daily", "--json", "--timezone", USAGE_TIME_ZONE],
     { encoding: "utf8", timeout: CCUSAGE_TIMEOUT_MS, windowsHide: true },
   );
   return parseCcusageDaily(JSON.parse(stdout), now);

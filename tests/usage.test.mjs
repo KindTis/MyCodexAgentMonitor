@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
 
 import {
   collectUsage,
@@ -10,6 +11,9 @@ import {
 } from "../monitor/usage.mjs";
 
 const now = new Date(2026, 6, 26, 20, 19, 44);
+const ccusageCliPath = fileURLToPath(
+  new URL("../node_modules/ccusage/src/cli.js", import.meta.url),
+);
 
 test("UTC 15시 이후 사용량을 KST 다음날 행에서 읽는다", () => {
   assert.deepEqual(
@@ -122,7 +126,7 @@ test("codex bucket 누락과 지원하지 않는 window는 해당 값을 null로
   );
 });
 
-test("전역 ccusage 명령을 고정 인자로 실행한다", async () => {
+test("프로젝트 로컬 ccusage CLI를 KST 고정 인자로 실행한다", async () => {
   let call;
   const result = await readCcusageDaily(now, async (command, args, options) => {
     call = { command, args, options };
@@ -138,12 +142,14 @@ test("전역 ccusage 명령을 고정 인자로 실행한다", async () => {
   });
 
   assert.deepEqual(result, { todayTokens: 12, todayCostUsd: 0.5 });
-  assert.equal(call.command, process.env.ComSpec ?? "cmd.exe");
+  assert.equal(call.command, process.execPath);
   assert.deepEqual(call.args, [
-    "/d",
-    "/s",
-    "/c",
-    "ccusage codex daily --json --timezone Asia/Seoul",
+    ccusageCliPath,
+    "codex",
+    "daily",
+    "--json",
+    "--timezone",
+    "Asia/Seoul",
   ]);
   assert.equal(call.options.timeout, 5000);
   assert.equal(call.options.windowsHide, true);
