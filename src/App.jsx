@@ -272,6 +272,7 @@ export function SessionRow({
 function GlobalSessionCard({
   session,
   onSelect,
+  onSelectChild,
   clock,
   wallClock,
   collectedAt,
@@ -291,9 +292,10 @@ function GlobalSessionCard({
   const workTitle = session.currentWork?.title
     || session.assignedWork
     || "No assigned work";
-  const accessibleSessionName = session.session
-    || session.projectName
-    || session.id;
+  const isChild = session.parentSessionId != null;
+  const accessibleSessionName = isChild
+    ? session.agentNickname ?? session.threadId.slice(0, 8)
+    : session.session || session.projectName || session.id;
   const activelyWorking = Boolean(
     connectedWorking
     && session.isWorking
@@ -306,12 +308,19 @@ function GlobalSessionCard({
       className="global-session-card"
       data-board-session-id={session.id}
       aria-label={`Open details for ${accessibleSessionName}`}
-      aria-controls="session-detail"
-      onClick={() => onSelect(session.id, "board")}
+      aria-haspopup={isChild ? "dialog" : undefined}
+      aria-controls={isChild ? "child-agent-dialog" : "session-detail"}
+      onClick={() => {
+        if (isChild) onSelectChild(session.id);
+        else onSelect(session.id, "board");
+      }}
     >
-      <span className="global-card-identity">
-        <strong>{session.projectName ?? "Unknown project"}</strong>
-        <small><GitBranch size={11} /> {session.gitBranch ?? "No Git branch"}</small>
+      <span className="global-card-heading">
+        <span className="global-card-identity">
+          <strong>{session.projectName ?? "Unknown project"}</strong>
+          <small><GitBranch size={11} /> {session.gitBranch ?? "No Git branch"}</small>
+        </span>
+        {isChild && <span className="global-card-child-tag">Child</span>}
       </span>
       <StatusBadge status={session.status} statusBasis={session.statusBasis} />
       <span className="global-card-session">
@@ -329,14 +338,22 @@ function GlobalSessionCard({
         {latestActivity?.label ?? "No active tool"}
         {relativeTime ? ` · ${relativeTime}` : ""}
       </span>
-      <span className="global-card-time">
-        <i
-          className={activelyWorking
-            ? "global-card-dot global-card-dot--working"
-            : "global-card-dot"}
-          aria-hidden="true"
-        />
-        {formatDuration(duration)} session
+      <span className="global-card-footer">
+        <span className="global-card-time">
+          <i
+            className={activelyWorking
+              ? "global-card-dot global-card-dot--working"
+              : "global-card-dot"}
+            aria-hidden="true"
+          />
+          {formatDuration(duration)} session
+        </span>
+        {isChild && (
+          <span className="global-card-child-agent">
+            <strong>{session.agentNickname ?? session.threadId.slice(0, 8)}</strong>
+            <small>{session.model ?? "Model unavailable"}</small>
+          </span>
+        )}
       </span>
     </button>
   );
@@ -345,6 +362,8 @@ function GlobalSessionCard({
 export function GlobalActivityBoard({
   sessions,
   onSelect,
+  selectedChildId,
+  onSelectChild,
   clock,
   wallClock,
   collectedAt,
@@ -352,10 +371,22 @@ export function GlobalActivityBoard({
   isConnected,
   changes,
 }) {
+  const boardSessions = useMemo(() => sessions.flatMap((parent) => [
+    parent,
+    ...(parent.children ?? []).map((child) => ({
+      ...child,
+      projectName: parent.projectName,
+      gitBranch: parent.gitBranch,
+      session: parent.session,
+    })),
+  ]), [sessions]);
   const lanes = useMemo(
-    () => getActivityBoardLanes(sessions),
-    [sessions],
+    () => getActivityBoardLanes(boardSessions),
+    [boardSessions],
   );
+  const selectedChild = boardSessions.find((session) => (
+    session.parentSessionId != null && session.id === selectedChildId
+  ));
   const boardRef = useRef(null);
   const previousCardRects = useRef(new Map());
   const previousCardPositions = useRef(new Map());
@@ -491,6 +522,7 @@ export function GlobalActivityBoard({
                     key={session.id}
                     session={session}
                     onSelect={onSelect}
+                    onSelectChild={onSelectChild}
                     clock={clock}
                     wallClock={wallClock}
                     collectedAt={collectedAt}
@@ -509,6 +541,14 @@ export function GlobalActivityBoard({
         <p className="global-board-empty">
           There are no sessions in the current server snapshot.
         </p>
+      )}
+      {selectedChild && (
+        <ChildAgentDialog
+          child={selectedChild}
+          onClose={() => onSelectChild(null)}
+          collectedAt={collectedAt}
+          clock={clock}
+        />
       )}
     </section>
   );
@@ -1496,6 +1536,8 @@ export function App() {
           <GlobalActivityBoard
             sessions={visibleSessions}
             onSelect={selectSession}
+            selectedChildId={selectedChildId}
+            onSelectChild={setSelectedChildId}
             clock={clock}
             wallClock={wallClock}
             collectedAt={snapshot.collectedAt}

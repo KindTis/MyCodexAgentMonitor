@@ -122,6 +122,104 @@ test("글로벌 카드는 세션명과 현재 작업을 별도 항목으로 렌�
   assert.match(markup, /class="global-card-work">Review the latest color feedback<\/span>/);
 });
 
+test("글로벌 보드는 자식을 부모와 별도 카드로 표시하고 Child 상세를 직접 연다", () => {
+  const child = {
+    id: "child-a",
+    threadId: "child-a",
+    parentSessionId: "root-a",
+    agentNickname: "navigator",
+    model: "gpt-5.6-sol",
+    status: "waiting",
+    statusBasis: "observed",
+    isWorking: false,
+    startedAt: "2026-07-29T03:02:00Z",
+    lastActivityAt: "2026-07-29T03:04:50Z",
+    durationSeconds: 45,
+    currentWork: { turnId: "turn-child", title: "Inspect child activity" },
+    currentActivity: {
+      label: "Reading App.jsx",
+      startedAt: "2026-07-29T03:04:45Z",
+    },
+    activity: [{
+      id: "child-latest",
+      label: "Read App.jsx",
+      at: "2026-07-29T03:04:50Z",
+    }],
+    skills: [],
+    plan: null,
+    goal: null,
+  };
+  const secondChild = {
+    ...child,
+    id: "child-b",
+    threadId: "child-b",
+    agentNickname: "reviewer",
+    model: "gpt-5.6-terra",
+    status: "running",
+    isWorking: true,
+    lastActivityAt: "2026-07-29T03:04:55Z",
+    activity: [{
+      id: "child-b-latest",
+      label: "Review App.jsx",
+      at: "2026-07-29T03:04:55Z",
+    }],
+  };
+  const root = rootSession("root-a", "running", {
+    session: "Parent session",
+    children: [child, secondChild],
+  });
+  const render = (selectedChildId = null) => renderToStaticMarkup(
+    createElement(GlobalActivityBoard, {
+      sessions: [root],
+      onSelect() {},
+      selectedChildId,
+      onSelectChild() {},
+      clock,
+      wallClock: clock,
+      collectedAt,
+      isLive: true,
+      isConnected: true,
+      changes: { "root-a": { activityIds: [] } },
+    }),
+  );
+  const board = render();
+
+  assert.equal(board.match(/data-board-session-id=/g)?.length, 3);
+  assert.equal(board.match(/class="global-card-child-tag"/g)?.length, 2);
+  assert.equal(board.match(/MyCodexAgentMonitor/g)?.length, 3);
+  assert.equal(board.match(/>Parent session<\/span>/g)?.length, 3);
+  assert.match(
+    board,
+    /class="global-card-child-agent"[\s\S]*navigator[\s\S]*gpt-5\.6-sol/,
+  );
+
+  const activeLane = board.slice(
+    board.indexOf("activity-lane--active"),
+    board.indexOf("activity-lane--waiting"),
+  );
+  assert.ok(
+    activeLane.indexOf('data-board-session-id="child-b"')
+      < activeLane.indexOf('data-board-session-id="root-a"'),
+  );
+  assert.match(activeLane, /activity-lane-heading[\s\S]*<span>2<\/span>/);
+
+  const waitingLane = board.slice(
+    board.indexOf("activity-lane--waiting"),
+    board.indexOf("activity-lane--inactive"),
+  );
+  assert.match(waitingLane, /data-board-session-id="child-a"/);
+  assert.match(waitingLane, /activity-lane-heading[\s\S]*<span>1<\/span>/);
+
+  const childCardStart = board.indexOf('data-board-session-id="child-a"');
+  const childCard = board.slice(
+    childCardStart,
+    board.indexOf("</button>", childCardStart),
+  );
+  assert.match(childCard, /aria-haspopup="dialog"/);
+  assert.match(childCard, /aria-controls="child-agent-dialog"/);
+  assert.match(render("child-a"), /id="child-agent-dialog"/);
+});
+
 test("루트 세션이 없으면 레인 대신 보드 전체 빈 상태를 표시한다", () => {
   const markup = renderToStaticMarkup(createElement(GlobalActivityBoard, {
     sessions: [],
