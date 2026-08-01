@@ -28,6 +28,8 @@ Rules:
 - Use Geist Sans for UI copy, Geist Mono only for times, IDs, code, and numeric readouts, and Phosphor regular icons throughout.
 - Use the restrained navy palette (`#090C13`, `#101521`, `#161C29`) with cool white text and indigo, violet, cyan, amber, and coral only for hierarchy and state.
 - Modern Dark 상태 팔레트에 녹색·민트 계열을 사용하지 않는다. Running은 인디고, Complete/Planning은 바이올렛, Connected/Live는 시안 블루, Waiting/Syncing은 앰버, Attention/Error는 코랄, inactive 상태는 슬레이트를 사용한다.
+- 정보 역할 컬러는 세션/실행=인디고, Skills/Goal=바이올렛, Tasks/Cost=앰버, 시간/Tokens/Recent activity=시안, Attention/사용량 경고=코랄로 구분한다.
+- 데스크톱 앱 셸은 상단·콘텐츠·하단을 한 뷰포트 안에 배치하고 문서 스크롤 대신 합의된 내부 목록만 스크롤한다.
 - Prefer divider-based regions, one selected-session rail, and flat tinted states; avoid terminal styling, glow effects, decorative gradients, and nested card chrome.
 - The top list must show agent, session/assigned work, state/current activity, session time, skills, task completion, Goal use, and active/total child agents.
 - Identify each root session in the top list by the final folder name of its `cwd` and its current Git branch; do not repeat fixed `Codex` or `Root agent` labels there.

@@ -25,10 +25,17 @@ test("데스크톱 콘텐츠 상하 여백은 패널 사이 간격과 같은 10p
   assert.match(pageContent, /padding: 10px 0/);
 });
 
-test("데스크톱 상세 영역은 상태바를 제외한 뷰포트 높이 안에 머문다", () => {
+test("데스크톱 셸은 페이지 스크롤 없이 상단·콘텐츠·상태바를 뷰포트에 배치한다", () => {
+  const shell = declarations(".app-shell");
+  assert.match(shell, /display: grid/);
+  assert.match(shell, /height: 100dvh/);
+  assert.match(shell, /grid-template-rows: auto minmax\(0, 1fr\) auto/);
+  assert.match(shell, /overflow: hidden/);
+
   const pageContent = declarations(".page-content");
-  assert.match(pageContent, /height: calc\(100dvh - 95px\)/);
-  assert.doesNotMatch(pageContent, /min-height: max\(/);
+  assert.match(pageContent, /height: auto/);
+  assert.match(pageContent, /min-height: 0/);
+  assert.doesNotMatch(pageContent, /100dvh/);
 
   const detail = declarations(".session-detail");
   assert.match(detail, /min-height: 0/);
@@ -40,6 +47,10 @@ test("1180px 이하의 세로 적층 레이아웃은 데스크톱 높이 제한�
     css.indexOf("@media (max-width: 1180px)"),
     css.indexOf("@media (max-width: 1120px)"),
   );
+  const shell = declarations(".app-shell", responsive);
+  assert.match(shell, /height: auto/);
+  assert.match(shell, /min-height: 100dvh/);
+  assert.match(shell, /overflow: visible/);
   assert.match(declarations(".page-content", responsive), /height: auto/);
 });
 

@@ -942,7 +942,7 @@ export function SessionDetail({
             />
           </article>
 
-          <article className="detail-card">
+          <article className="detail-card skills-card">
             <header className="card-header">
               <span><GearSix size={16} /> Applied skills</span>
               <b>{session.skills?.length ?? 0}</b>
@@ -956,7 +956,7 @@ export function SessionDetail({
             )}
           </article>
 
-          <article className="detail-card">
+          <article className="detail-card token-card">
             <header className="card-header">
               <span><Coins size={16} /> Token usage</span>
             </header>
@@ -1057,37 +1057,45 @@ export function SystemSummary({
 }) {
   return (
     <div className="system-summary">
-      <span className="summary-item summary-item--live">
+      <span className="summary-item summary-item--running">
         <i className={`live-dot ${isLive ? "" : "live-dot--paused"}`} />
         {runningCount} running
       </span>
-      <span className="summary-item">
+      <span className="summary-item summary-item--waiting">
         <Clock size={14} />
         {waitingCount} waiting
       </span>
-      <span className="summary-item">
+      <span className="summary-item summary-item--sessions">
         <UsersThree size={14} />
         {sessionCount} sessions
       </span>
-      <span>
-        | Tokens{" "}
-        <AnimatedUsageValue
-          value={usage?.todayTokens}
-          format={formatTokenCount}
-        />
+      <span className="summary-group summary-group--daily">
+        | <span className="summary-stat summary-stat--tokens">
+          Tokens{" "}
+          <AnimatedUsageValue
+            value={usage?.todayTokens}
+            format={formatTokenCount}
+          />
+        </span>
         {" · "}
-        Cost{" "}
-        <AnimatedUsageValue
-          value={usage?.todayCostUsd}
-          format={formatCostUsd}
-        />
+        <span className="summary-stat summary-stat--cost">
+          Cost{" "}
+          <AnimatedUsageValue
+            value={usage?.todayCostUsd}
+            format={formatCostUsd}
+          />
+        </span>
       </span>
-      <span>
-        | 5H {formatPercent(usage?.fiveHourUsedPercent)}
+      <span className="summary-group summary-group--limits">
+        | <span className="summary-stat summary-stat--five-hour">
+          5H {formatPercent(usage?.fiveHourUsedPercent)}
+        </span>
         {" · "}
-        1W {formatPercent(usage?.oneWeekUsedPercent)}
+        <span className="summary-stat summary-stat--one-week">
+          1W {formatPercent(usage?.oneWeekUsedPercent)}
+        </span>
       </span>
-      <time>| {formatLocalClock(wallClock)}</time>
+      <time className="summary-clock">| {formatLocalClock(wallClock)}</time>
     </div>
   );
 }
