@@ -61,8 +61,8 @@ test("상세 DOM은 세 개 논리 열의 합의된 카드 순서를 유지한�
   );
   const labels = [
     "Current work",
-    "Recent activity",
     "Goal",
+    "Recent activity",
     "Child agents",
     "Plan Tasks",
     "Applied skills",
@@ -83,11 +83,11 @@ test("데스크톱 상세 열과 각 열의 행 비율이 정확하다", () => {
   );
   assert.match(
     declarations(".detail-column--work"),
-    /grid-template-rows: minmax\(0, 2fr\) minmax\(0, 3fr\)/,
+    /grid-template-rows: minmax\(0, 1fr\)/,
   );
   assert.match(
     declarations(".detail-column--context"),
-    /grid-template-rows: minmax\(0, 3fr\) minmax\(0, 7fr\)/,
+    /grid-template-rows: minmax\(0, 25fr\) minmax\(0, 40fr\) minmax\(0, 35fr\)/,
   );
   assert.match(
     declarations(".detail-column--planning"),
@@ -176,6 +176,23 @@ test("데스크톱 상세 카드는 행을 채우고 인접 카드 사이를 구
   assert.match(scroller, /flex: 1/);
   assert.match(scroller, /max-height: none/);
   assert.match(scroller, /overflow-y: auto/);
+});
+
+test("Current work의 최근 메시지는 항목마다 최대 3줄을 표시한다", () => {
+  const message = declarations(".message-button span");
+  assert.match(message, /display: -webkit-box/);
+  assert.match(message, /-webkit-line-clamp: 3/);
+  assert.match(message, /-webkit-box-orient: vertical/);
+  assert.doesNotMatch(message, /white-space: nowrap/);
+});
+
+test("Recent message 전체 글상자는 화면 가까이에 고정되고 넘친 본문만 스크롤한다", () => {
+  const popover = declarations(".message-popover");
+  assert.match(popover, /position: fixed/);
+  assert.match(popover, /max-width: calc\(100vw - 24px\)/);
+  assert.match(popover, /max-height: calc\(100vh - 24px\)/);
+  assert.match(popover, /overflow-y: auto/);
+  assert.match(declarations(".message-popover p"), /white-space: pre-wrap/);
 });
 
 test("1120px 이하에서 행 비율을 해제하고 긴 세 목록만 내부 스크롤한다", () => {

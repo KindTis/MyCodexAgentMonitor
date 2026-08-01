@@ -127,7 +127,11 @@ const EMPTY_CHANGES = {
   childIds: [],
   handoffChildIds: [],
   activityIds: [],
+  messageIds: [],
+  childChanges: {},
 };
+
+const EMPTY_CHILD_CHANGES = { activityIds: [], messageIds: [] };
 
 function AgentMark({ item, size = 34, active = false, handoff = false }) {
   const child = item.parentSessionId != null;
@@ -553,6 +557,7 @@ export function GlobalActivityBoard({
       {selectedChild && (
         <ChildAgentDialog
           child={selectedChild}
+          changes={changes[selectedChild.parentSessionId]?.childChanges?.[selectedChild.id] ?? EMPTY_CHILD_CHANGES}
           onClose={() => onSelectChild(null)}
           collectedAt={collectedAt}
           clock={clock}
@@ -593,13 +598,118 @@ function TaskList({ plan, collectedAt, changedTasks = [] }) {
   );
 }
 
-function ChildAgentDialog({ child, onClose, collectedAt, clock }) {
+function RecentMessages({ ownerId, messages = [], changedMessageIds = [] }) {
+  const [messagePopover, setMessagePopover] = useState(null);
+  const popoverId = `recent-message-popover-${ownerId}`;
+
+  useEffect(() => {
+    if (!messagePopover) return undefined;
+    const close = () => setMessagePopover(null);
+    const closeOnEscape = (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      close();
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [messagePopover]);
+
+  const showMessage = (event, message) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const keyboard = event.clientX === 0 && event.clientY === 0;
+    const anchorX = keyboard ? rect.right : event.clientX;
+    const anchorY = keyboard ? rect.top : event.clientY;
+    const width = Math.min(420, window.innerWidth - 24);
+    const height = Math.min(320, window.innerHeight - 24);
+    const openBelow = anchorY + height + 24 <= window.innerHeight;
+    const openAbove = !openBelow && anchorY - height - 24 >= 0;
+    setMessagePopover({
+      ...message,
+      left: Math.max(12, Math.min(anchorX + 12, window.innerWidth - width - 12)),
+      top: openBelow ? anchorY + 12 : openAbove ? undefined : 12,
+      bottom: openAbove ? window.innerHeight - anchorY + 12 : undefined,
+    });
+  };
+
+  return (
+    <>
+      <div className="card-header current-work-messages-header">
+        <span><Robot size={16} /> Recent messages</span>
+        <b>{messages.length}</b>
+      </div>
+      {messages.length ? (
+        <ol className="activity-list message-list">
+          {messages.map((message) => (
+            <li
+              className={`message-item ${changedMessageIds.includes(message.id) ? "message-item--updated" : ""}`.trim()}
+              key={message.id}
+            >
+              <button
+                type="button"
+                className="message-button"
+                aria-describedby={messagePopover?.id === message.id ? popoverId : undefined}
+                onClick={(event) => showMessage(event, message)}
+              >
+                <time>{formatLocalTime(message.at)}</time>
+                <Robot className="activity-event-icon" size={14} />
+                <span>{message.text}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="empty-copy">No recent agent messages were observed.</p>
+      )}
+      {messagePopover && (
+        <aside
+          id={popoverId}
+          className="message-popover"
+          role="tooltip"
+          style={{
+            left: messagePopover.left,
+            top: messagePopover.top,
+            bottom: messagePopover.bottom,
+          }}
+        >
+          <header>
+            <span>Recent message</span>
+            <time>{formatLocalTime(messagePopover.at)}</time>
+          </header>
+          <p>{messagePopover.text}</p>
+        </aside>
+      )}
+    </>
+  );
+}
+
+function ChildAgentDialog({ child, changes, onClose, collectedAt, clock }) {
   const dialogRef = useRef(null);
+  const keepOpenOnCancelRef = useRef(false);
   const progress = getPlanProgress(child.plan);
   const duration = getDisplayedDuration(child, collectedAt, clock);
 
   useEffect(() => {
-    if (!dialogRef.current?.open) dialogRef.current?.showModal();
+    const dialog = dialogRef.current;
+    if (!dialog?.open) dialog?.showModal();
+    const markPopoverEscape = (event) => {
+      keepOpenOnCancelRef.current = event.key === "Escape"
+        && dialog.querySelector(".message-popover") != null;
+    };
+    const keepOpen = (event) => {
+      if (!keepOpenOnCancelRef.current) return;
+      event.preventDefault();
+      keepOpenOnCancelRef.current = false;
+    };
+    dialog?.addEventListener("keydown", markPopoverEscape, true);
+    dialog?.addEventListener("cancel", keepOpen);
+    return () => {
+      dialog?.removeEventListener("keydown", markPopoverEscape, true);
+      dialog?.removeEventListener("cancel", keepOpen);
+    };
   }, []);
 
   return (
@@ -659,6 +769,11 @@ function ChildAgentDialog({ child, onClose, collectedAt, clock }) {
             <StatusBadge status={child.status} statusBasis={child.statusBasis} />
             <small>{child.currentActivity?.label ?? "No active tool"}</small>
           </div>
+          <RecentMessages
+            ownerId={child.id}
+            messages={child.messages}
+            changedMessageIds={changes.messageIds}
+          />
         </article>
 
         <article className="detail-card activity-card">
@@ -669,7 +784,11 @@ function ChildAgentDialog({ child, onClose, collectedAt, clock }) {
           {child.activity?.length ? (
             <ol className="activity-list">
               {child.activity.map((activity) => (
-                <li key={activity.id} data-kind={activity.kind}>
+                <li
+                  key={activity.id}
+                  data-kind={activity.kind}
+                  className={changes.activityIds.includes(activity.id) ? "activity-item--updated" : ""}
+                >
                   <time>{formatLocalTime(activity.at)}</time>
                   <TerminalWindow className="activity-event-icon" size={14} />
                   <span>{activity.label}</span>
@@ -800,6 +919,7 @@ export function ChildAgents({
       {selectedChild && (
         <ChildAgentDialog
           child={selectedChild}
+          changes={changes.childChanges?.[selectedChild.id] ?? EMPTY_CHILD_CHANGES}
           onClose={() => onSelect(null)}
           collectedAt={collectedAt}
           clock={clock}
@@ -875,8 +995,11 @@ export function SessionDetail({
         <div className="detail-agent">
           <AgentMark item={session} size={42} />
           <div>
-            <p>{session.gitBranch}</p>
             <h2 id="session-detail-title" tabIndex={-1}>{session.session}</h2>
+            <p>
+              <span>{session.gitBranch}</span>
+              {session.model && <span className="detail-model">{session.model}</span>}
+            </p>
           </div>
         </div>
         <div className="detail-meta">
@@ -915,6 +1038,33 @@ export function SessionDetail({
               <StatusBadge status={session.status} statusBasis={session.statusBasis} />
               <small>{session.currentActivity?.label ?? "No active tool"}</small>
             </div>
+            <RecentMessages
+              ownerId={session.id}
+              messages={session.messages}
+              changedMessageIds={changes.messageIds}
+            />
+          </article>
+        </div>
+
+        <div className="detail-column detail-column--context">
+          <article className={`detail-card goal-card ${session.goal ? "" : "goal-card--empty"}`}>
+            <header className="card-header">
+              <span><Target size={16} /> Goal</span>
+              <b>{session.goal ? formatGoalStatus(session.goal.status) : "Not used"}</b>
+            </header>
+            {session.goal ? (
+              <>
+                <h3>{session.goal.objective}</h3>
+                <p>
+                  Tokens {formatTokenCount(session.goal.tokensUsed)}
+                  {" / "}
+                  {formatTokenCount(session.goal.tokenBudget)}
+                </p>
+                <small>Time used · {formatDuration(session.goal.timeUsedSeconds)}</small>
+              </>
+            ) : (
+              <p className="empty-copy">This session is not operating under a Goal.</p>
+            )}
           </article>
 
           <article className="detail-card activity-card">
@@ -938,28 +1088,6 @@ export function SessionDetail({
               </ol>
             ) : (
               <p className="empty-copy">No recent tool activity was observed.</p>
-            )}
-          </article>
-        </div>
-
-        <div className="detail-column detail-column--context">
-          <article className={`detail-card goal-card ${session.goal ? "" : "goal-card--empty"}`}>
-            <header className="card-header">
-              <span><Target size={16} /> Goal</span>
-              <b>{session.goal ? formatGoalStatus(session.goal.status) : "Not used"}</b>
-            </header>
-            {session.goal ? (
-              <>
-                <h3>{session.goal.objective}</h3>
-                <p>
-                  Tokens {formatTokenCount(session.goal.tokensUsed)}
-                  {" / "}
-                  {formatTokenCount(session.goal.tokenBudget)}
-                </p>
-                <small>Time used · {formatDuration(session.goal.timeUsedSeconds)}</small>
-              </>
-            ) : (
-              <p className="empty-copy">This session is not operating under a Goal.</p>
             )}
           </article>
 

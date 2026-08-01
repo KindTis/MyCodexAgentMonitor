@@ -64,14 +64,20 @@ test("연결된 Live 작업 시간만 snapshot 사이 경과 시간을 보간한
   );
 });
 
-test("직전 snapshot과 달라진 토큰·Plan·child·활동만 표시한다", () => {
+test("직전 snapshot과 달라진 토큰·Plan·child·활동·메시지만 표시한다", () => {
   const previousSnapshot = {
     sessions: [{
       id: "root",
       tokens: { root: 100, children: 20, total: 120 },
       plan: { tasks: [{ title: "수집기 구현", status: "active" }] },
-      children: [{ id: "child-a", status: "running" }],
+      children: [{
+        id: "child-a",
+        status: "running",
+        activity: [{ id: "child-activity-1" }],
+        messages: [{ id: "child-message-1" }],
+      }],
       activity: [{ id: "activity-1" }],
+      messages: [{ id: "message-1" }],
     }],
   };
   const nextSnapshot = {
@@ -79,8 +85,14 @@ test("직전 snapshot과 달라진 토큰·Plan·child·활동만 표시한다",
       id: "root",
       tokens: { root: 140, children: 30, total: 170 },
       plan: { tasks: [{ title: "수집기 구현", status: "done" }] },
-      children: [{ id: "child-a", status: "complete" }],
+      children: [{
+        id: "child-a",
+        status: "complete",
+        activity: [{ id: "child-activity-2" }, { id: "child-activity-1" }],
+        messages: [{ id: "child-message-2" }, { id: "child-message-1" }],
+      }],
       activity: [{ id: "activity-2" }, { id: "activity-1" }],
+      messages: [{ id: "message-2" }, { id: "message-1" }],
     }],
   };
   const previousBefore = structuredClone(previousSnapshot);
@@ -92,6 +104,13 @@ test("직전 snapshot과 달라진 토큰·Plan·child·활동만 표시한다",
   assert.deepEqual(changes.root.childIds, ["child-a"]);
   assert.deepEqual(changes.root.handoffChildIds, ["child-a"]);
   assert.deepEqual(changes.root.activityIds, ["activity-2"]);
+  assert.deepEqual(changes.root.messageIds, ["message-2"]);
+  assert.deepEqual(changes.root.childChanges, {
+    "child-a": {
+      activityIds: ["child-activity-2"],
+      messageIds: ["child-message-2"],
+    },
+  });
   assert.deepEqual(previousSnapshot, previousBefore);
   assert.deepEqual(nextSnapshot, nextBefore);
 });
@@ -104,6 +123,7 @@ test("첫 root는 강조하지 않고 새로 발견된 complete child만 handoff
       plan: null,
       children: [],
       activity: [{ id: "first" }],
+      messages: [{ id: "first-message" }],
     }],
   });
   assert.deepEqual(first.root, {
@@ -112,6 +132,8 @@ test("첫 root는 강조하지 않고 새로 발견된 complete child만 handoff
     childIds: [],
     handoffChildIds: [],
     activityIds: [],
+    messageIds: [],
+    childChanges: {},
   });
 
   const changes = getSnapshotChanges(
@@ -125,6 +147,7 @@ test("첫 root는 강조하지 않고 새로 발견된 complete child만 handoff
     },
   );
   assert.deepEqual(changes.root.handoffChildIds, ["new-complete"]);
+  assert.deepEqual(changes.root.childChanges, {});
 });
 
 test("getPlanProgress reports completed tasks and the active task", () => {

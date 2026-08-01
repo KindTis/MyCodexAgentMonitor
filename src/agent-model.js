@@ -300,16 +300,21 @@ export function getSnapshotChanges(previous, next) {
         childIds: [],
         handoffChildIds: [],
         activityIds: [],
+        messageIds: [],
+        childChanges: {},
       }];
     }
     const beforeTasks = new Map(
       (before.plan?.tasks ?? []).map((task) => [task.title, task.status]),
     );
     const beforeChildren = new Map(
-      (before.children ?? []).map((child) => [child.id, child.status]),
+      (before.children ?? []).map((child) => [child.id, child]),
     );
     const beforeActivities = new Set(
       (before.activity ?? []).map((activity) => activity.id),
+    );
+    const beforeMessages = new Set(
+      (before.messages ?? []).map((message) => message.id),
     );
 
     return [session.id, {
@@ -320,17 +325,37 @@ export function getSnapshotChanges(previous, next) {
         .filter((task) => beforeTasks.get(task.title) !== task.status)
         .map((task) => task.title),
       childIds: (session.children ?? [])
-        .filter((child) => beforeChildren.get(child.id) !== child.status)
+        .filter((child) => beforeChildren.get(child.id)?.status !== child.status)
         .map((child) => child.id),
       handoffChildIds: (session.children ?? [])
         .filter((child) => (
           child.status === "complete"
-          && beforeChildren.get(child.id) !== "complete"
+          && beforeChildren.get(child.id)?.status !== "complete"
         ))
         .map((child) => child.id),
       activityIds: (session.activity ?? [])
         .filter((activity) => !beforeActivities.has(activity.id))
         .map((activity) => activity.id),
+      messageIds: (session.messages ?? [])
+        .filter((message) => !beforeMessages.has(message.id))
+        .map((message) => message.id),
+      childChanges: Object.fromEntries((session.children ?? []).flatMap((child) => {
+        const beforeChild = beforeChildren.get(child.id);
+        if (!beforeChild) return [];
+        const activityIds = new Set((beforeChild.activity ?? []).map(({ id }) => id));
+        const messageIds = new Set((beforeChild.messages ?? []).map(({ id }) => id));
+        const changed = {
+          activityIds: (child.activity ?? [])
+            .filter(({ id }) => !activityIds.has(id))
+            .map(({ id }) => id),
+          messageIds: (child.messages ?? [])
+            .filter(({ id }) => !messageIds.has(id))
+            .map(({ id }) => id),
+        };
+        return changed.activityIds.length || changed.messageIds.length
+          ? [[child.id, changed]]
+          : [];
+      })),
     }];
   }));
 }

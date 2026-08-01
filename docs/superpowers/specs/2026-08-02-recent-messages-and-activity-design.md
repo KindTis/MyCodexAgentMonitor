@@ -9,6 +9,7 @@
 - 사용자에게 표시된 assistant 메시지 원문을 세션별 최신 10개까지 보존한다.
 - 사용자 입력, 추론, 도구 출력, 내부 agent 메시지는 계속 제외한다.
 - Current work의 Recent messages 목록은 기존 3줄 clamp를 유지하고 남는 항목은 목록 내부에서 세로 스크롤한다.
+- 최초 snapshot은 강조하지 않고, 이후 실제로 추가된 메시지만 기존 Recent activity의 900ms 강조 효과를 적용한다.
 - 각 메시지 행은 키보드로 접근 가능한 버튼이다.
 - 메시지를 누르면 클릭 좌표 가까이에 전체 원문과 시각을 표시하는 비모달 popover를 연다.
 - popover가 열린 뒤 상자 내부를 포함한 아무 곳이나 클릭하거나 `Esc`를 누르면 닫는다.
@@ -38,5 +39,6 @@ Recent messages의 카드 구조와 시안 색상은 유지한다. 항목은 행
 - user/reasoning/tool/internal 메시지가 제외되는 기존 회귀 테스트
 - `exec`, `wait_agent`, `request_user_input`, `shell_command`의 안전한 상세 라벨 테스트
 - Recent messages 10개와 클릭 가능한 행을 확인하는 SSR 테스트
+- snapshot 사이 새 메시지 ID만 감지하고 최초 메시지는 강조하지 않는 모델 테스트
 - 헤드리스 브라우저에서 목록 내부 스크롤, 3줄 clamp, 마우스 인접 popover의 전체 원문과 viewport 경계 보정, 다음 클릭과 `Esc` 닫기, 콘솔 오류 0건 확인
 - 전체 테스트, 프로덕션 빌드, Sites 테스트 실행

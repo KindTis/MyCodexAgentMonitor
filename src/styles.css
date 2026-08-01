@@ -1136,9 +1136,18 @@ time,
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: 0 0 4px;
+  margin: 4px 0 0;
   color: var(--blue);
   font: 12px/1 "Geist Mono Variable", monospace;
+}
+
+.detail-model {
+  color: var(--muted);
+}
+
+.detail-model::before {
+  margin-right: 4px;
+  content: "·";
 }
 
 .detail-agent h2 {
@@ -1199,11 +1208,11 @@ time,
 }
 
 .detail-column--work {
-  grid-template-rows: minmax(0, 2fr) minmax(0, 3fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .detail-column--context {
-  grid-template-rows: minmax(0, 3fr) minmax(0, 7fr);
+  grid-template-rows: minmax(0, 25fr) minmax(0, 40fr) minmax(0, 35fr);
 }
 
 .detail-column--planning {
@@ -1849,12 +1858,92 @@ time,
   font-size: 10px;
 }
 
+.current-work-messages-header {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.message-list .message-item {
+  display: block;
+  padding: 0;
+}
+
+.message-button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 66px 22px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 9px 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message-button:hover,
+.message-button:focus-visible {
+  color: var(--text);
+  background: rgb(56 189 248 / 6%);
+  outline: none;
+}
+
+.message-button span {
+  display: -webkit-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.message-list .activity-event-icon {
+  color: var(--cyan);
+}
+
 .activity-event-icon {
   color: var(--blue);
 }
 
-.activity-item--updated {
+.activity-item--updated,
+.message-item--updated {
   animation: activity-in 900ms ease-out 1;
+}
+
+.message-popover {
+  position: fixed;
+  z-index: 50;
+  width: 420px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  padding: 12px 14px;
+  overflow-y: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--secondary);
+  background: var(--panel-raised);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  font-size: 12px;
+}
+
+.message-popover header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--cyan);
+  font: 10px/1 "Geist Mono Variable", monospace;
+}
+
+.message-popover p {
+  margin: 10px 0 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .ledger-empty {
@@ -1979,6 +2068,7 @@ time,
   .task-item--updated,
   .child-row--handoff,
   .activity-item--updated,
+  .message-item--updated,
   .global-card-dot--working,
   .global-card-activity--updated {
     animation: none;

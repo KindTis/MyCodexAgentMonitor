@@ -44,10 +44,12 @@ Rules:
 - On desktop, place the root-session list on the left and the selected-session detail on the right.
 - Size the desktop shell from minimum dimensions and let it grow with the browser. Let the session list consume the ledger's available height and scroll only its overflow; do not reserve a fixed number of rows.
 - Lay out desktop session cards in four bands: agent/state, assignment/session time, current activity, and padded metrics. Point the session caret toward the detail panel: right in the desktop master-detail layout and down in the stacked layout.
-- Give the three desktop detail columns a 35% / 35% / 30% balance. Split column 1 into Current work 40% / Recent activity 60%, column 2 into Goal 30% / Child agents 70%, and column 3 into Plan Tasks 60% / Applied skills 20% / Token usage 20%.
-- Do not make the whole selected-session detail an independent scroll area. Limit internal scrolling to long Plan Tasks, child-agent, and recent-activity lists.
+- 데스크톱 상세 3열은 35% / 35% / 30%를 유지한다. 1열은 Current work 전체, 2열은 Goal 25% / Recent activity 40% / Child agents 35%, 3열은 Plan Tasks 60% / Applied skills 20% / Token usage 20%로 배치한다.
+- 루트와 Child Agent의 Current work에는 사용자에게 표시된 최근 agent 메시지 원문을 최신순 10개까지 항목당 최대 3줄로 표시하고 목록만 내부 스크롤한다. 행을 누르면 마우스 가까이에 전체 원문을 표시하며 다음 클릭이나 `Esc`로 닫는다. 실제 새 메시지만 기존 activity 강조 효과를 적용하고 사용자 입력·추론·도구 출력·내부 agent 메시지는 제외한다.
+- 루트와 Child Agent의 Recent activity는 `exec`, `wait` 같은 내부 도구명 대신 안전하게 요약한 명령·대기 대상·작업 수를 표시하고 비밀값은 노출하지 않는다. 실제 새 activity만 강조한다.
+- Do not make the whole selected-session detail an independent scroll area. Limit internal scrolling to long Plan Tasks, child-agent, recent-message, and recent-activity lists.
 - Show Child Agents in five wrapping columns: agent name, state, session time, tasks, and Goal. Do not use horizontal scrolling or hover-revealed details.
-- Open a floating detail dialog when a child-agent row is clicked. Show current work, recent activity, applied skills, tasks, and Goal.
+- Open a floating detail dialog when a child-agent row is clicked. Show current work, recent messages, recent activity, applied skills, tasks, and Goal.
 - 루트 세션을 선택하지 않았을 때 오른쪽 영역에 Active, Waiting, Inactive, Ended의 4개 글로벌 활동 레인을 표시한다. Planning/Queued는 Active, Needs input/Blocked는 Waiting, Failed는 Ended에 포함하되 각 상태 배지 색상은 유지한다.
 - Global Activity에는 루트와 자식 에이전트를 각각 별도 카드로 표시한다. 자식 카드는 부모의 프로젝트명·브랜치명·세션명을 사용하고 클릭 시 기존 Child Agent 상세 다이얼로그를 바로 연다. Child 태그는 Complete와 구분되는 시안을 사용한다. 카드 마지막 줄은 세션 시간을 좌측에 두고, 루트는 모델명, 자식은 `닉네임 / 모델명`을 우측 한 줄로 표시한다. 좌측 루트 목록의 오른쪽 열은 상태 태그, 모델명, 세션 경과 시간, Started 시각 순서로 우측 정렬한다.
 - 최초 진입과 선택 세션 소멸 시 다른 세션을 자동 선택하지 않는다. 목록 행 재선택이나 상세 닫기는 글로벌 활동 보드로 돌아간다.

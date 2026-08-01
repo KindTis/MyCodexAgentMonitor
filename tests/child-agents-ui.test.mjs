@@ -29,6 +29,11 @@ const child = {
   durationSeconds: 75,
   currentWork: { turnId: "turn-a", title: "Inspect child rendering" },
   currentActivity: { label: "Reading App.jsx", step: "Reading files" },
+  messages: Array.from({ length: 10 }, (_, index) => ({
+    id: `child-message-${index + 1}`,
+    at: `2026-07-26T06:00:${String(index + 1).padStart(2, "0")}Z`,
+    text: `child agent message ${index + 1}`,
+  })),
   skills: ["frontend-design"],
   plan: { tasks: [{ title: "Wrap child rows", status: "active" }] },
   goal: {
@@ -42,14 +47,23 @@ const child = {
     id: "activity-a",
     at: "2026-07-26T06:00:01Z",
     kind: "read",
-    label: "Read App.jsx",
+    label: "Run · npm.cmd test",
   }],
 };
 
 const props = {
   children: [child],
   clock: Date.parse("2026-07-26T06:00:03Z"),
-  changes: { childIds: [], handoffChildIds: [] },
+  changes: {
+    childIds: [],
+    handoffChildIds: [],
+    childChanges: {
+      "child-a": {
+        activityIds: ["activity-a"],
+        messageIds: ["child-message-10"],
+      },
+    },
+  },
   collectedAt: "2026-07-26T06:00:03Z",
   onSelect() {},
 };
@@ -97,8 +111,9 @@ test("선택한 Child Agent의 합의된 상세 정보를 dialog에 표시한다
   for (const content of [
     "Current work",
     "Inspect child rendering",
+    "Recent messages",
     "Recent activity",
-    "Read App.jsx",
+    "Run · npm.cmd test",
     "Applied skills",
     "frontend-design",
     "Tasks",
@@ -108,4 +123,7 @@ test("선택한 Child Agent의 합의된 상세 정보를 dialog에 표시한다
   ]) {
     assert.match(markup, new RegExp(content));
   }
+  assert.equal(markup.match(/class="message-button"/g)?.length, 10);
+  assert.equal(markup.match(/message-item--updated/g)?.length, 1);
+  assert.equal(markup.match(/activity-item--updated/g)?.length, 1);
 });
