@@ -572,6 +572,10 @@ time,
   white-space: nowrap;
 }
 
+.session-agent strong {
+  color: color-mix(in srgb, var(--blue) 80%, var(--text));
+}
+
 .session-agent small,
 .session-assignment small,
 .session-state > small,
@@ -846,7 +850,7 @@ time,
   display: grid;
   min-height: 0;
   flex: 1;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .activity-lane {
@@ -883,11 +887,7 @@ time,
   font-size: 9px;
 }
 
-.activity-lane--attention .activity-lane-heading :is(h3, span) {
-  color: var(--coral);
-}
-
-.activity-lane--working .activity-lane-heading :is(h3, span) {
+.activity-lane--active .activity-lane-heading :is(h3, span) {
   color: var(--blue);
 }
 
@@ -895,8 +895,7 @@ time,
   color: var(--amber);
 }
 
-.activity-lane--planning .activity-lane-heading :is(h3, span),
-.activity-lane--complete .activity-lane-heading :is(h3, span) {
+.activity-lane--ended .activity-lane-heading :is(h3, span) {
   color: var(--violet);
 }
 
@@ -1913,18 +1912,18 @@ time,
   }
 
   .global-lanes {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .activity-lane-cards {
     overflow-y: visible;
   }
 
-  .activity-lane:nth-child(3n + 1):not(:first-child) {
+  .activity-lane:nth-child(odd):not(:first-child) {
     border-left: 0;
   }
 
-  .activity-lane:nth-child(n + 4) {
+  .activity-lane:nth-child(n + 3) {
     border-top: 1px solid var(--line);
   }
 

@@ -195,18 +195,18 @@ test("1120px 이하에서 행 비율을 해제하고 긴 세 목록만 내부 �
   assert.doesNotMatch(declarations(".session-detail"), /overflow-y: auto/);
 });
 
-test("글로벌 보드는 데스크톱에서 6열과 레인별 내부 스크롤을 사용한다", () => {
+test("글로벌 보드는 데스크톱에서 4열과 레인별 내부 스크롤을 사용한다", () => {
   assert.match(declarations(".global-board"), /overflow: hidden/);
   assert.match(
     declarations(".global-lanes"),
-    /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/,
+    /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/,
   );
   const cards = declarations(".activity-lane-cards");
   assert.match(cards, /min-height: 0/);
   assert.match(cards, /overflow-y: auto/);
 });
 
-test("글로벌 보드는 기존 반응형 경계에서 3열, 2열, 1열로 줄어든다", () => {
+test("글로벌 보드는 적층·작은 화면에서 2열, 모바일에서 1열로 줄어든다", () => {
   const stacked = css.slice(
     css.indexOf("@media (max-width: 1180px)"),
     css.indexOf("@media (max-width: 1120px)"),
@@ -219,7 +219,7 @@ test("글로벌 보드는 기존 반응형 경계에서 3열, 2열, 1열로 줄�
 
   assert.match(
     declarations(".global-lanes", stacked),
-    /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
+    /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/,
   );
   assert.match(
     declarations(".activity-lane-cards", stacked),

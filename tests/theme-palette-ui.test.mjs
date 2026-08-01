@@ -38,6 +38,10 @@ test("상단 요약은 세션·비용·사용량·시간 역할을 개별 색으
 });
 
 test("세션 목록과 상세 카드는 정보 역할별 Modern Dark 강조색을 사용한다", () => {
+  assert.match(
+    css,
+    /\.session-agent strong[\s\S]*?color: color-mix\(in srgb, var\(--blue\) 80%, var\(--text\)\);/,
+  );
   assert.match(css, /\.session-skills \.metric-value strong[\s\S]*?color: var\(--violet\);/);
   assert.match(css, /\.session-tasks \.metric-value strong[\s\S]*?color: var\(--amber\);/);
   assert.match(css, /\.session-goal \.metric-value strong[\s\S]*?color: var\(--violet\);/);
