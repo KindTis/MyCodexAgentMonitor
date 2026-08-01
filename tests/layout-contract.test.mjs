@@ -206,6 +206,24 @@ test("글로벌 보드는 데스크톱에서 4열과 레인별 내부 스크롤�
   assert.match(cards, /overflow-y: auto/);
 });
 
+test("자식 글로벌 카드는 Child 태그와 에이전트 정보를 양 끝에 배치한다", () => {
+  const sharedMatch = css.match(
+    /\.global-card-heading,\s*\.global-card-footer\s*\{([^}]+)\}/,
+  );
+  assert.ok(sharedMatch, "missing shared child card alignment rule");
+  const shared = sharedMatch[1].replace(/\s+/g, " ");
+  assert.match(shared, /display: flex/);
+  assert.match(shared, /justify-content: space-between/);
+
+  const tag = declarations(".global-card-child-tag");
+  assert.match(tag, /color: var\(--violet\)/);
+  assert.match(tag, /background: rgb\(167 139 250 \/ 10%\)/);
+
+  const identity = declarations(".global-card-child-agent");
+  assert.match(identity, /margin-left: auto/);
+  assert.match(identity, /text-align: right/);
+});
+
 test("글로벌 보드는 적층·작은 화면에서 2열, 모바일에서 1열로 줄어든다", () => {
   const stacked = css.slice(
     css.indexOf("@media (max-width: 1180px)"),

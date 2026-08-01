@@ -914,6 +914,58 @@ time,
   cursor: pointer;
 }
 
+.global-card-heading,
+.global-card-footer {
+  display: flex;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.global-card-heading {
+  align-items: flex-start;
+}
+
+.global-card-child-tag {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border: 1px solid color-mix(in srgb, var(--violet) 42%, transparent);
+  border-radius: 5px;
+  color: var(--violet);
+  background: rgb(167 139 250 / 10%);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.global-card-footer {
+  align-items: flex-end;
+}
+
+.global-card-child-agent {
+  display: grid;
+  min-width: 0;
+  margin-left: auto;
+  gap: 2px;
+  text-align: right;
+}
+
+.global-card-child-agent strong,
+.global-card-child-agent small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.global-card-child-agent strong {
+  color: var(--violet);
+  font-size: 9px;
+}
+
+.global-card-child-agent small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
 .global-session-card--motion {
   position: fixed;
   z-index: 40;
