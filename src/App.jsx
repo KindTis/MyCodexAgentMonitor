@@ -17,12 +17,18 @@ import {
   Check,
   CheckCircle,
   CircleNotch,
+  ClipboardText,
   Clock,
+  ClockCounterClockwise,
   Code,
+  Coins,
+  FolderOpen,
+  GearSix,
   GitBranch,
   HourglassMedium,
   Path,
   PauseCircle,
+  Planet,
   Play,
   Pulse,
   Robot,
@@ -31,6 +37,7 @@ import {
   Target,
   TerminalWindow,
   UserFocus,
+  UsersThree,
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
@@ -130,7 +137,7 @@ function AgentMark({ item, size = 34, active = false, handoff = false }) {
     <span
       className={`agent-mark ${active ? "agent-mark--active" : ""} ${handoff ? "agent-mark--handoff" : ""}`}
       style={{
-        "--agent-color": child ? "#8fa9ff" : "#5ed6c6",
+        "--agent-color": child ? "#9a82f4" : "#718bff",
         width: size,
         height: size,
       }}
@@ -612,6 +619,7 @@ function ChildAgentDialog({ child, onClose, collectedAt, clock }) {
               {child.activity.map((activity) => (
                 <li key={activity.id} data-kind={activity.kind}>
                   <time>{formatLocalTime(activity.at)}</time>
+                  <TerminalWindow className="activity-event-icon" size={14} />
                   <span>{activity.label}</span>
                 </li>
               ))}
@@ -750,7 +758,7 @@ export function ChildAgents({
 }
 
 const liveStepIcons = {
-  "Reading files": BracketsCurly,
+  "Reading files": FolderOpen,
   "Calling tool": TerminalWindow,
   Editing: Code,
   Testing: ShieldCheck,
@@ -859,7 +867,7 @@ export function SessionDetail({
 
           <article className="detail-card activity-card">
             <header className="card-header">
-              <span><Pulse size={16} /> Recent activity</span>
+              <span><ClockCounterClockwise size={16} /> Recent activity</span>
               <b>Local</b>
             </header>
             {session.activity?.length ? (
@@ -871,6 +879,7 @@ export function SessionDetail({
                     className={changes.activityIds.includes(activity.id) ? "activity-item--updated" : ""}
                   >
                     <time>{formatLocalTime(activity.at)}</time>
+                    <TerminalWindow className="activity-event-icon" size={14} />
                     <span>{activity.label}</span>
                   </li>
                 ))}
@@ -881,7 +890,7 @@ export function SessionDetail({
           </article>
         </div>
 
-        <div className="detail-column detail-column--planning">
+        <div className="detail-column detail-column--context">
           <article className={`detail-card goal-card ${session.goal ? "" : "goal-card--empty"}`}>
             <header className="card-header">
               <span><Target size={16} /> Goal</span>
@@ -902,37 +911,9 @@ export function SessionDetail({
             )}
           </article>
 
-          <article className="detail-card task-card">
-            <header className="card-header">
-              <span><CheckCircle size={16} /> Tasks</span>
-              <b>{progress.total ? `${progress.completed}/${progress.total}` : "Not used"}</b>
-            </header>
-            <TaskList
-              plan={session.plan}
-              collectedAt={collectedAt}
-              changedTasks={changes.taskTitles}
-            />
-          </article>
-
-          <article className="detail-card">
-            <header className="card-header">
-              <span><BracketsCurly size={16} /> Applied skills</span>
-              <b>{session.skills?.length ?? 0}</b>
-            </header>
-            {session.skills?.length ? (
-              <ul className="skill-chips">
-                {session.skills.map((skill) => <li key={skill}>{skill}</li>)}
-              </ul>
-            ) : (
-              <p className="empty-copy">No skills were observed for this Turn.</p>
-            )}
-          </article>
-        </div>
-
-        <div className="detail-column detail-column--agents">
           <article className="detail-card child-card">
             <header className="card-header">
-              <span><GitBranch size={16} /> Child agents</span>
+              <span><UsersThree size={16} /> Child agents</span>
               <b>{session.children?.length ?? 0}</b>
             </header>
             <ChildAgents
@@ -944,10 +925,38 @@ export function SessionDetail({
               collectedAt={collectedAt}
             />
           </article>
+        </div>
+
+        <div className="detail-column detail-column--planning">
+          <article className="detail-card task-card">
+            <header className="card-header">
+              <span><ClipboardText size={16} /> Plan Tasks</span>
+              <b>{progress.total ? `${progress.completed}/${progress.total}` : "Not used"}</b>
+            </header>
+            <TaskList
+              plan={session.plan}
+              collectedAt={collectedAt}
+              changedTasks={changes.taskTitles}
+            />
+          </article>
 
           <article className="detail-card">
             <header className="card-header">
-              <span><TerminalWindow size={16} /> Token usage</span>
+              <span><GearSix size={16} /> Applied skills</span>
+              <b>{session.skills?.length ?? 0}</b>
+            </header>
+            {session.skills?.length ? (
+              <ul className="skill-chips">
+                {session.skills.map((skill) => <li key={skill}>{skill}</li>)}
+              </ul>
+            ) : (
+              <p className="empty-copy empty-copy--compact">No skills were observed for this Turn.</p>
+            )}
+          </article>
+
+          <article className="detail-card">
+            <header className="card-header">
+              <span><Coins size={16} /> Token usage</span>
             </header>
             <dl className="token-list">
               {["total", "root", "children"].map((key) => (
@@ -1046,9 +1055,17 @@ export function SystemSummary({
 }) {
   return (
     <div className="system-summary">
-      <span>
+      <span className="summary-item summary-item--live">
         <i className={`live-dot ${isLive ? "" : "live-dot--paused"}`} />
-        {runningCount} running {waitingCount} waiting {sessionCount} sessions
+        {runningCount} running
+      </span>
+      <span className="summary-item">
+        <Clock size={14} />
+        {waitingCount} waiting
+      </span>
+      <span className="summary-item">
+        <UsersThree size={14} />
+        {sessionCount} sessions
       </span>
       <span>
         | Tokens{" "}
@@ -1331,7 +1348,7 @@ export function App() {
     <main className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true"><Path size={20} /></span>
+          <span className="brand-mark" aria-hidden="true"><Planet size={20} /></span>
           <div>
             <strong>Orbital Dispatch</strong>
             <small>My Codex Agent Monitor</small>

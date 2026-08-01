@@ -52,9 +52,9 @@ test("상세 DOM은 세 개 논리 열의 합의된 카드 순서를 유지한�
     "Current work",
     "Recent activity",
     "Goal",
-    "Tasks",
-    "Applied skills",
     "Child agents",
+    "Plan Tasks",
+    "Applied skills",
     "Token usage",
   ];
   let previous = -1;
@@ -68,20 +68,32 @@ test("상세 DOM은 세 개 논리 열의 합의된 카드 순서를 유지한�
 test("데스크톱 상세 열과 각 열의 행 비율이 정확하다", () => {
   assert.match(
     declarations(".detail-grid"),
-    /grid-template-columns: minmax\(0, 34fr\) minmax\(0, 33fr\) minmax\(0, 33fr\)/,
+    /grid-template-columns: minmax\(0, 35fr\) minmax\(0, 35fr\) minmax\(0, 30fr\)/,
   );
   assert.match(
     declarations(".detail-column--work"),
     /grid-template-rows: minmax\(0, 2fr\) minmax\(0, 3fr\)/,
   );
   assert.match(
-    declarations(".detail-column--planning"),
-    /grid-template-rows: minmax\(0, 3fr\) minmax\(0, 5fr\) minmax\(0, 2fr\)/,
+    declarations(".detail-column--context"),
+    /grid-template-rows: minmax\(0, 3fr\) minmax\(0, 7fr\)/,
   );
   assert.match(
-    declarations(".detail-column--agents"),
-    /grid-template-rows: minmax\(0, 4fr\) minmax\(0, 1fr\)/,
+    declarations(".detail-column--planning"),
+    /grid-template-rows: minmax\(0, 3fr\) minmax\(0, 1fr\) minmax\(0, 1fr\)/,
   );
+});
+
+test("Quiet Data Studio 핵심 토큰과 읽기 가능한 기본 글자 크기를 사용한다", () => {
+  const root = declarations(":root");
+  assert.match(root, /--bg: #090d15/);
+  assert.match(root, /--panel: #0f1520/);
+  assert.match(root, /--panel-raised: #151d2a/);
+  assert.match(root, /--text: #f5f7fa/);
+  assert.match(root, /--muted: #8d98a8/);
+  assert.match(root, /--blue: #718bff/);
+  assert.match(root, /--mint: #49d5ad/);
+  assert.match(declarations("body"), /font-size: 14px/);
 });
 
 test("Child Agent 상세는 60/40 두 행과 50/50·3등분 열을 사용한다", () => {
@@ -209,5 +221,19 @@ test("글로벌 보드는 기존 반응형 경계에서 3열, 2열, 1열로 줄�
   assert.match(
     declarations(".global-lanes", mobile),
     /grid-template-columns: minmax\(0, 1fr\)/,
+  );
+});
+
+test("작은 화면의 세션 목록은 가로 스크롤 없는 4단 카드로 돌아간다", () => {
+  const small = css.slice(
+    css.indexOf("@media (max-width: 760px)"),
+    css.indexOf("@media (max-width: 470px)"),
+  );
+  assert.match(declarations(".ledger-scroll", small), /overflow-x: hidden/);
+  assert.match(declarations(".session-ledger", small), /min-width: 0/);
+  assert.match(declarations(".ledger-header", small), /display: none/);
+  assert.match(
+    declarations(".session-row", small),
+    /grid-template-areas: "agent agent state state" "assignment assignment time time" "activity activity activity activity" "skills tasks goal subagents"/,
   );
 });

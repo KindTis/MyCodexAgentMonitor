@@ -12,6 +12,7 @@ const {
   ConnectionState,
   SessionDetail,
   SessionRow,
+  SystemSummary,
 } = await server.ssrLoadModule("/src/App.jsx");
 
 test.after(async () => {
@@ -137,4 +138,22 @@ test("상세 헤더는 현재 브랜치명과 세션명만 제목으로 표시�
   );
   assert.doesNotMatch(heading, /Selected session/);
   assert.doesNotMatch(heading, /<h2>Codex /);
+  assert.match(markup, /Plan Tasks<\/span>/);
+});
+
+test("상단 요약은 실행·대기·세션 수를 개별 아이콘 항목으로 표시한다", () => {
+  const markup = renderToStaticMarkup(createElement(SystemSummary, {
+    runningCount: 2,
+    waitingCount: 1,
+    sessionCount: 4,
+    usage: {},
+    wallClock: new Date(2026, 7, 1, 12, 0, 0).getTime(),
+    isLive: true,
+  }));
+
+  assert.equal(markup.match(/class="summary-item/g)?.length, 3);
+  assert.equal(markup.match(/<svg/g)?.length, 2);
+  assert.match(markup, /2 running/);
+  assert.match(markup, /1 waiting/);
+  assert.match(markup, /4 sessions/);
 });

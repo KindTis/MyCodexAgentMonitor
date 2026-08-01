@@ -1,47 +1,29 @@
-# 반응형 좌우형 모니터 Design QA
+# Quiet Data Studio 디자인 QA
 
-- Defect evidence: 사용자가 제공한 1586 × 835 화면 캡처
-- Desktop implementation: `assets/responsive-session-cards-desktop.png`
-- Stacked implementation: `assets/responsive-session-cards-stacked.png`
-- State: 실제 로컬 Codex snapshot, Live, Operational order, 선택된 실행 중 세션
+## 비교 증거
 
-## Full-view evidence
+- 레퍼런스: `assets/orbital-dispatch-quiet-data-studio.png` (1738×905)
+- 구현 캡처: `artifacts/quiet-data-studio-implementation.png` (1738×905)
+- 동일 입력 비교: `artifacts/quiet-data-studio-comparison.png`
+- 모바일 캡처: `artifacts/quiet-data-studio-mobile.png`
 
-- 1586 × 835에서 문서 높이와 viewport 높이가 모두 835px이므로 강제 페이지 스크롤이 없다.
-- 화면 너비 1552px을 사용하며 좌측 434.5px, 우측 1107.5px로 비례 확장된다.
-- 우측 상세의 세 열은 1586px viewport에서 386.9px / 331.6px / 386.9px로 계산되어 35% / 30% / 35% 비율을 이룬다.
-- 1920 × 1080에서는 화면 너비 1886px, 좌측 528.1px, 우측 1347.9px로 함께 확장된다.
-- 상세 패널의 `overflow-y`는 `visible`이고 내부 열 경계가 패널 하단까지 이어진다.
+## 1차 비교
 
-## Session-card evidence
+| 심각도 | 영역 | 발견 내용 | 조치 |
+| --- | --- | --- | --- |
+| P1 | 반응형 | 760px 이하에서도 1180px용 8열 목록과 `min-width: 1160px`가 유지되어 내부 가로 스크롤이 발생했다. | 760px 이하에서 4단 세션 카드 레이아웃을 복원하고 가로 스크롤을 제거했다. 회귀 테스트를 추가했다. |
 
-- 카드는 agent/state, assignment/session time, current activity, metrics의 네 구역으로 분리됐다.
-- 첫 줄의 고정 `Codex` / `Root agent` 라벨을 세션 `cwd`의 마지막 폴더명 / 현재 Git 브랜치로 교체했다.
-- 실제 snapshot에서 `MyCodexAgentMonitor` / `main`, `Dabom` / `main`, `TransportFactory` / `master`를 확인했다.
-- 첫 카드에서 project name의 `clientWidth`와 `scrollWidth`가 모두 137px이므로 이름이 잘리지 않는다.
-- current activity와 session time의 경계 상자가 겹치지 않는다.
-- metrics 구역은 상단 구분선과 7px 상단 padding, 카드 10px 하단 padding을 가진다.
-- 카드 높이는 고정값이 아니라 콘텐츠 기반이며 현재 snapshot에서 약 142.8px이다.
+## 2차 비교 결과
 
-## Responsive evidence
+- P0/P1/P2 미해결 항목 없음.
+- Geist Sans/Mono 역할, Phosphor 아이콘, 네이비 표면과 인디고·민트 상태색, 단일 선택 레일, 구분선 중심 카드 구조가 레퍼런스 의도와 일치한다.
+- 데스크톱 상세는 35/35/30 열과 40/60, 30/70, 60/20/20 행 비율을 유지한다.
+- 레퍼런스보다 넓은 좌측 목록은 프로젝트의 명시된 25% 마스터 패널 계약을 따른다.
+- Goal, Plan Tasks, Child Agents의 빈 영역은 실제 선택 세션 데이터가 비어 있기 때문이며 임의 데이터나 진행률을 만들지 않았다.
 
-- 1100 × 850에서 목록과 상세가 상하로 전환되고 목록 높이는 실제 4행인 180px이다.
-- 상하 배치의 session caret은 90도 회전해 아래를 가리킨다.
-- 390 × 844에서 문서 전체의 가로 overflow가 없고 상세 패널 전체 스크롤도 생기지 않는다.
-- 데스크톱 caret은 오른쪽을 가리키며 선택 카드는 기존 mint 강조선과 배경을 유지한다.
+## 반응형·동작·접근성
 
-## Required fidelity surfaces
-
-- 기존 Geist/Geist Mono, operational-control 팔레트, 상태색과 Phosphor 아이콘을 유지했다.
-- 세션·작업·상태·활동·시간·Skills·Tasks·Goal·Subagents 정보를 모두 유지했다.
-- Current work 열은 Current work → Applied skills → Token usage 순서로 읽힌다.
-- Sort, Live/Paused, session selection 동작을 변경하지 않았다.
-- 브라우저 console error/warning: 없음.
-
-## Findings
-
-- 기존 P1: 4개 세션에도 7행 최소 높이 728px을 강제해 835px viewport에서 문서가 951px로 늘어났다.
-- 수정 후: 목록은 패널의 가용 높이를 사용하고 실제 콘텐츠보다 많은 행을 예약하지 않는다.
-- P0/P1/P2 시각 문제는 현재 데스크톱 및 상하 배치 캡처에서 추가로 발견되지 않았다.
-
-final result: passed
+- 1120px 경계: 문서/본문 가로 오버플로 없음, 상세 2열, Plan Tasks 열 전체 폭.
+- 455px 모바일: 문서 및 세션 목록 가로 오버플로 없음, 세션 4단 카드와 상세 1열.
+- 브라우저에서 세션 선택, 상세 닫기 후 글로벌 보드 복귀, Live/Paused 스냅샷 제어를 확인했다.
+- 버튼의 키보드 포커스 표시, 의미 있는 접근성 이름, reduced-motion 규칙을 유지했다.
