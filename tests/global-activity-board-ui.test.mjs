@@ -39,6 +39,7 @@ function rootSession(id, status, overrides = {}) {
     status,
     statusBasis: "observed",
     isWorking: status === "running",
+    model: "gpt-5.6-sol",
     startedAt: "2026-07-29T03:00:00Z",
     lastActivityAt: "2026-07-29T03:04:00Z",
     durationSeconds: 80,
@@ -122,6 +123,38 @@ test("글로벌 카드는 세션명과 현재 작업을 별도 항목으로 렌�
   assert.match(markup, /class="global-card-work">Review the latest color feedback<\/span>/);
 });
 
+test("글로벌 루트 카드와 좌측 목록은 합의된 위치에 모델을 표시한다", () => {
+  const session = rootSession("root-model", "running");
+  const board = renderToStaticMarkup(createElement(GlobalActivityBoard, {
+    sessions: [session],
+    onSelect() {},
+    clock,
+    wallClock: clock,
+    collectedAt,
+    isLive: true,
+    isConnected: true,
+    changes: { "root-model": { activityIds: [] } },
+  }));
+  const row = renderToStaticMarkup(createElement(SessionRow, {
+    session,
+    selected: false,
+    onSelect() {},
+    clock,
+    wallClock: clock,
+    changes: { childIds: [] },
+    collectedAt,
+  }));
+
+  assert.match(
+    board,
+    /class="global-card-footer"[\s\S]*1:24 session[\s\S]*class="global-card-agent"[\s\S]*gpt-5\.6-sol/,
+  );
+  assert.match(
+    row,
+    /class="session-state"[\s\S]*class="session-status"[\s\S]*status-badge[\s\S]*class="session-model"[\s\S]*gpt-5\.6-sol[\s\S]*class="session-activity"[\s\S]*Calling tool · 1m ago[\s\S]*class="session-time"[\s\S]*1:24[\s\S]*Started/,
+  );
+});
+
 test("글로벌 보드는 자식을 부모와 별도 카드로 표시하고 Child 상세를 직접 연다", () => {
   const child = {
     id: "child-a",
@@ -190,7 +223,7 @@ test("글로벌 보드는 자식을 부모와 별도 카드로 표시하고 Chil
   assert.equal(board.match(/>Parent session<\/span>/g)?.length, 3);
   assert.match(
     board,
-    /class="global-card-child-agent"[\s\S]*navigator[\s\S]*gpt-5\.6-sol/,
+    /class="global-card-agent"[\s\S]*navigator[\s\S]*\/[\s\S]*gpt-5\.6-sol/,
   );
 
   const activeLane = board.slice(

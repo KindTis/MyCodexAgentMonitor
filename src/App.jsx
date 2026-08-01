@@ -224,7 +224,12 @@ export function SessionRow({
         <small>{session.assignedWork || "No assigned work"}</small>
       </span>
       <span className="session-state">
-        <StatusBadge status={session.status} statusBasis={session.statusBasis} />
+        <span className="session-status">
+          <StatusBadge status={session.status} statusBasis={session.statusBasis} />
+          <small className="session-model">
+            {session.model ?? "Model unavailable"}
+          </small>
+        </span>
         <small className="session-activity">
           {session.currentActivity?.label ?? "No active tool"}
           {relativeTime ? ` · ${relativeTime}` : ""}
@@ -348,12 +353,15 @@ function GlobalSessionCard({
           />
           {formatDuration(duration)} session
         </span>
-        {isChild && (
-          <span className="global-card-child-agent">
-            <strong>{session.agentNickname ?? session.threadId.slice(0, 8)}</strong>
-            <small>{session.model ?? "Model unavailable"}</small>
-          </span>
-        )}
+        <span className="global-card-agent">
+          {isChild && (
+            <>
+              <strong>{session.agentNickname ?? session.threadId.slice(0, 8)}</strong>
+              <span aria-hidden="true"> / </span>
+            </>
+          )}
+          <small>{session.model ?? "Model unavailable"}</small>
+        </span>
       </span>
     </button>
   );
