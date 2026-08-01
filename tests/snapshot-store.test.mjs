@@ -285,6 +285,16 @@ test("루트 session도 관찰된 model을 snapshot에 노출한다", async () =
           type: "turn_context",
           payload: { turn_id: "root-turn", model: "gpt-5.6-sol" },
         },
+        {
+          timestamp: "2026-07-26T06:00:02Z",
+          type: "response_item",
+          payload: {
+            type: "message",
+            id: "root-message",
+            role: "assistant",
+            content: [{ type: "output_text", text: "완료 상태를 확인했습니다." }],
+          },
+        },
       ],
     },
   });
@@ -292,6 +302,11 @@ test("루트 session도 관찰된 model을 snapshot에 노출한다", async () =
   const snapshot = await harness.store.initialize();
 
   assert.equal(snapshot.sessions[0].model, "gpt-5.6-sol");
+  assert.deepEqual(snapshot.sessions[0].messages, [{
+    id: "root-message",
+    at: "2026-07-26T06:00:02.000Z",
+    text: "완료 상태를 확인했습니다.",
+  }]);
 });
 
 test("JSONL-only child를 같은 ID의 상세 정보로 갱신한다", async () => {
@@ -408,7 +423,7 @@ test("App Server 장애 중 cached catalog와 새 JSONL 상태를 적용한다",
   assert.equal(recovered.sessions[0].tokens.root, 42);
 });
 
-test("root session에 cwd의 project name과 현재 git branch를 노출한다", async () => {
+test("root session에 project name, git branch, model을 노출한다", async () => {
   const metadataCalls = [];
   const harness = createStoreHarness({
     threads: [thread("active-root", {
@@ -417,9 +432,16 @@ test("root session에 cwd의 project name과 현재 git branch를 노출한다",
     })],
     startedAt: "2026-07-26T06:00:00Z",
     initialRecords: {
-      "active-root": [sessionEvent("2026-07-26T05:59:30Z", "task_started", {
-        turn_id: "active-root-turn",
-      })],
+      "active-root": [
+        sessionEvent("2026-07-26T05:59:30Z", "task_started", {
+          turn_id: "active-root-turn",
+        }),
+        {
+          timestamp: "2026-07-26T05:59:31Z",
+          type: "turn_context",
+          payload: { turn_id: "active-root-turn", model: "gpt-5.6-sol" },
+        },
+      ],
     },
     readRepoMetadata: async (cwd) => {
       metadataCalls.push(cwd);
@@ -434,6 +456,7 @@ test("root session에 cwd의 project name과 현재 git branch를 노출한다",
 
   assert.equal(snapshot.sessions[0].projectName, "AgentMonitor");
   assert.equal(snapshot.sessions[0].gitBranch, "feature/session-labels");
+  assert.equal(snapshot.sessions[0].model, "gpt-5.6-sol");
   assert.deepEqual(metadataCalls, ["C:\\Users\\dev\\Repos\\AgentMonitor"]);
 });
 
@@ -488,6 +511,16 @@ test("시작 시 최근 미완료 루트 source만 등록하고 child는 부모 
             call_id: "child-read",
           },
         },
+        {
+          timestamp: "2026-07-26T05:59:42Z",
+          type: "response_item",
+          payload: {
+            type: "message",
+            id: "child-message",
+            role: "assistant",
+            content: [{ type: "output_text", text: "Child 결과를 확인했습니다." }],
+          },
+        },
       ],
     },
   });
@@ -501,6 +534,11 @@ test("시작 시 최근 미완료 루트 source만 등록하고 child는 부모 
   assert.equal(activeRoot.isWorking, true);
   assert.equal(activeRoot.children[0].isWorking, true);
   assert.deepEqual(activeRoot.children[0].activity.map(({ id }) => id), ["child-read"]);
+  assert.deepEqual(activeRoot.children[0].messages, [{
+    id: "child-message",
+    at: "2026-07-26T05:59:42.000Z",
+    text: "Child 결과를 확인했습니다.",
+  }]);
   assert.deepEqual(activeRoot.children.map(({ id }) => id), [
     "child-a",
   ]);

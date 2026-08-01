@@ -44,6 +44,20 @@ function toolCall(timestamp, name, argumentsText = "{}", callId = `call-${timest
   };
 }
 
+function execCall(timestamp, input, callId = `exec-${timestamp}`) {
+  return {
+    timestamp,
+    type: "response_item",
+    payload: {
+      type: "custom_tool_call",
+      id: callId,
+      call_id: callId,
+      name: "exec",
+      input,
+    },
+  };
+}
+
 function toolOutput(timestamp, callId, output = "ok") {
   return {
     timestamp,
@@ -52,6 +66,19 @@ function toolOutput(timestamp, callId, output = "ok") {
       type: "function_call_output",
       call_id: callId,
       output,
+    },
+  };
+}
+
+function assistantMessage(timestamp, id, text) {
+  return {
+    timestamp,
+    type: "response_item",
+    payload: {
+      type: "message",
+      id,
+      role: "assistant",
+      content: [{ type: "output_text", text }],
     },
   };
 }
@@ -288,7 +315,7 @@ test("도구 호출을 관찰 가능한 최소 실행 단계로 분류한다", (
   assert.equal(classifyToolCall("browser_snapshot"), "Calling tool");
 });
 
-test("이전 Turn을 버리고 현재 Turn의 작업·스킬·Plan·토큰만 유지한다", () => {
+test("현재 Turn의 작업·스킬·토큰과 최신 Plan을 유지한다", () => {
   const records = [
     event("2026-07-26T05:59:00Z", "task_started", { turn_id: "old" }),
     toolCall("2026-07-26T05:59:01Z", "wait_agent", "{}", "old-wait"),
@@ -339,7 +366,249 @@ test("이전 Turn을 버리고 현재 Turn의 작업·스킬·Plan·토큰만 �
   ]);
   assert.equal(result.tokens, 420);
   assert.equal(result.status, "planning");
-  assert.equal(result.currentActivity.label, "update_plan");
+  assert.equal(result.currentActivity.label, "Update plan · 2 tasks");
+});
+
+test("새 Turn에서도 마지막 완료 Plan을 다시 수집해 유지한다", () => {
+  const records = [
+    event("2026-08-01T19:01:00Z", "task_started", { turn_id: "old" }),
+    toolCall("2026-08-01T19:01:01Z", "update_plan", JSON.stringify({
+      plan: [
+        { step: "원인 확인", status: "completed" },
+        { step: "회귀 테스트", status: "completed" },
+        { step: "수정 적용", status: "completed" },
+        { step: "전체 검증", status: "completed" },
+      ],
+    }), "old-plan"),
+    event("2026-08-01T19:02:00Z", "task_complete", { turn_id: "old" }),
+    event("2026-08-01T19:03:00Z", "task_started", { turn_id: "current" }),
+    event("2026-08-01T19:03:01Z", "user_message", { message: "후속 질문" }),
+  ];
+
+  const result = reduceThreadRecords(
+    null,
+    records,
+    activeThread("current"),
+    Date.parse("2026-08-01T19:03:02Z"),
+  );
+
+  assert.equal(result.turnId, "current");
+  assert.equal(result.assignedWork, "후속 질문");
+  assert.deepEqual(result.plan, {
+    tasks: [
+      { title: "원인 확인", status: "done" },
+      { title: "회귀 테스트", status: "done" },
+      { title: "수정 적용", status: "done" },
+      { title: "전체 검증", status: "done" },
+    ],
+  });
+});
+
+test("최근 assistant 메시지 원문을 최신순 10개까지 수집한다", () => {
+  const result = reduceThreadRecords(
+    null,
+    [
+      event("2026-08-01T19:01:00Z", "task_started", { turn_id: "old" }),
+      assistantMessage("2026-08-01T19:01:01Z", "assistant-1", "제외될 가장 오래된 메시지"),
+      assistantMessage("2026-08-01T19:01:02Z", "assistant-2", "두 번째 메시지"),
+      event("2026-08-01T19:02:00Z", "task_started", { turn_id: "current" }),
+      assistantMessage("2026-08-01T19:02:01Z", "assistant-3", "세 번째 메시지"),
+      {
+        timestamp: "2026-08-01T19:02:02Z",
+        type: "response_item",
+        payload: {
+          type: "message",
+          id: "user-message",
+          role: "user",
+          content: [{ type: "input_text", text: "표시하면 안 되는 사용자 메시지" }],
+        },
+      },
+      {
+        timestamp: "2026-08-01T19:02:03Z",
+        type: "response_item",
+        payload: { type: "reasoning", id: "reasoning", summary: ["비공개 추론"] },
+      },
+      {
+        timestamp: "2026-08-01T19:02:04Z",
+        type: "response_item",
+        payload: { type: "agent_message", id: "internal", text: "내부 에이전트 메시지" },
+      },
+      assistantMessage("2026-08-01T19:02:05Z", "assistant-4", "네 번째\n메시지"),
+      assistantMessage("2026-08-01T19:02:06Z", "assistant-5", "다섯 번째 메시지"),
+      assistantMessage("2026-08-01T19:02:07Z", "assistant-6", "여섯 번째 메시지"),
+      assistantMessage("2026-08-01T19:02:08Z", "assistant-7", "일곱 번째 메시지"),
+      assistantMessage("2026-08-01T19:02:09Z", "assistant-8", "여덟 번째 메시지"),
+      assistantMessage("2026-08-01T19:02:10Z", "assistant-9", "아홉 번째 메시지"),
+      assistantMessage("2026-08-01T19:02:11Z", "assistant-10", "열 번째 메시지"),
+      assistantMessage("2026-08-01T19:02:12Z", "assistant-11", "가".repeat(170)),
+    ],
+    activeThread("current"),
+    Date.parse("2026-08-01T19:02:13Z"),
+  );
+
+  assert.deepEqual(
+    result.messages.map(({ id }) => id),
+    [
+      "assistant-11",
+      "assistant-10",
+      "assistant-9",
+      "assistant-8",
+      "assistant-7",
+      "assistant-6",
+      "assistant-5",
+      "assistant-4",
+      "assistant-3",
+      "assistant-2",
+    ],
+  );
+  assert.equal(result.messages[0].text, "가".repeat(170));
+  assert.equal(result.messages.find(({ id }) => id === "assistant-4").text, "네 번째\n메시지");
+  assert.doesNotMatch(JSON.stringify(result.messages), /사용자|비공개|내부 에이전트/);
+});
+
+test("도구 입력을 안전하고 읽을 수 있는 Recent Activity로 요약한다", () => {
+  const cases = [
+    {
+      record: toolCall("2026-08-01T19:02:01Z", "shell_command", JSON.stringify({
+        command: "npm.cmd test",
+      })),
+      expected: "Run · npm.cmd test",
+    },
+    {
+      record: execCall(
+        "2026-08-01T19:02:01Z",
+        'const r = await tools.shell_command({command:"graphify query \\\"activity flow\\\""}); text(r);',
+      ),
+      expected: "Run · graphify query",
+    },
+    {
+      record: toolCall("2026-08-01T19:02:01Z", "wait", JSON.stringify({
+        cell_id: "cell-1",
+        yield_time_ms: 10000,
+      })),
+      expected: "Wait for command · up to 10s",
+    },
+    {
+      record: toolCall("2026-08-01T19:02:01Z", "wait_agent", JSON.stringify({
+        timeout_ms: 30000,
+      })),
+      expected: "Wait for child agents · up to 30s",
+    },
+    {
+      record: toolCall("2026-08-01T19:02:01Z", "request_user_input", JSON.stringify({
+        questions: [],
+      })),
+      expected: "Wait for user input",
+    },
+    {
+      record: toolCall("2026-08-01T19:02:01Z", "shell_command", JSON.stringify({
+        command: '$env:OPENAI_API_KEY="private-value"; npm.cmd test',
+      })),
+      expected: "Run · $env:OPENAI_API_KEY=***; npm.cmd test",
+    },
+  ];
+
+  for (const { record, expected } of cases) {
+    const result = reduceThreadRecords(
+      null,
+      [event("2026-08-01T19:02:00Z", "task_started", { turn_id: "current" }), record],
+      activeThread("current"),
+      Date.parse("2026-08-01T19:02:02Z"),
+    );
+    assert.equal(result.currentActivity.label, expected);
+    assert.doesNotMatch(JSON.stringify(result.activity), /private-value/);
+  }
+});
+
+test("exec 내부 update_plan의 현재 Plan을 수집한다", () => {
+  const records = [
+    event("2026-08-01T16:56:29Z", "task_started", { turn_id: "turn-1" }),
+    execCall("2026-08-01T18:17:55Z", `const result = await tools.update_plan({
+  explanation: "E2E 진행 상태를 갱신합니다.",
+  plan: [
+    { step: "권위 문서 확인", status: "completed" },
+    { step: "fixture 준비", status: "completed" },
+    { step: "정상 종단 실행", status: "completed" },
+    { step: "제품 독립 검증", status: "completed" },
+    { step: "실패 복귀 검증", status: "in_progress" },
+    { step: "최종 보고", status: "pending" }
+  ]
+});
+text(result);`, "exec-plan"),
+  ];
+
+  const result = reduceThreadRecords(
+    null,
+    records,
+    activeThread("turn-1"),
+    Date.parse("2026-08-01T18:17:56Z"),
+  );
+
+  assert.deepEqual(result.plan.tasks, [
+    { title: "권위 문서 확인", status: "done" },
+    { title: "fixture 준비", status: "done" },
+    { title: "정상 종단 실행", status: "done" },
+    { title: "제품 독립 검증", status: "done" },
+    { title: "실패 복귀 검증", status: "active" },
+    { title: "최종 보고", status: "queued" },
+  ]);
+});
+
+test("exec 내부 compact JSON update_plan을 수집한다", () => {
+  const result = reduceThreadRecords(
+    null,
+    [
+      event("2026-08-01T19:09:09Z", "task_started", { turn_id: "turn-1" }),
+      execCall(
+        "2026-08-01T19:09:10Z",
+        "const p = await tools.update_plan({\"explanation\":\"진행\",\"plan\":[{\"step\":\"현재 상태 확인\",\"status\":\"completed\"},{\"step\":\"수정 적용\",\"status\":\"in_progress\"}]});",
+      ),
+    ],
+    activeThread("turn-1"),
+    Date.parse("2026-08-01T19:09:11Z"),
+  );
+
+  assert.deepEqual(result.plan.tasks, [
+    { title: "현재 상태 확인", status: "done" },
+    { title: "수정 적용", status: "active" },
+  ]);
+});
+
+test("exec의 주석 안 update_plan은 기존 Plan을 덮어쓰지 않는다", () => {
+  const result = reduceThreadRecords(
+    null,
+    [
+      event("2026-08-01T16:56:29Z", "task_started", { turn_id: "turn-1" }),
+      toolCall("2026-08-01T16:56:30Z", "update_plan", JSON.stringify({
+        plan: [{ step: "실제 작업", status: "in_progress" }],
+      })),
+      execCall("2026-08-01T16:56:31Z", `/* tools.update_plan({
+  plan: [{ step: "주석뿐인 작업", status: "completed" }]
+}); */
+text("no plan update");`),
+    ],
+    activeThread("turn-1"),
+    Date.parse("2026-08-01T16:56:32Z"),
+  );
+
+  assert.deepEqual(result.plan.tasks, [{ title: "실제 작업", status: "active" }]);
+});
+
+test("불완전한 호출 뒤의 마지막 정상 update_plan을 수집한다", () => {
+  const result = reduceThreadRecords(
+    null,
+    [
+      event("2026-08-01T16:56:29Z", "task_started", { turn_id: "turn-1" }),
+      execCall("2026-08-01T16:56:30Z", `tools.update_plan({ plan: [
+const latest = await tools.update_plan({
+  plan: [{ step: "최신 계획", status: "in_progress" }]
+});`),
+    ],
+    activeThread("turn-1"),
+    Date.parse("2026-08-01T16:56:31Z"),
+  );
+
+  assert.deepEqual(result.plan.tasks, [{ title: "최신 계획", status: "active" }]);
 });
 
 test("도구 결과가 오면 Waiting과 Planning을 해제하고 Plan은 유지한다", () => {
@@ -403,7 +672,7 @@ test("이전 배치의 현재 Turn에 다음 배치 wait_agent를 적용한다",
   );
 
   assert.equal(observation.turnId, "turn-1");
-  assert.equal(observation.currentActivity.label, "wait_agent");
+  assert.equal(observation.currentActivity.label, "Wait for child agents");
   assert.equal(observation.status, "waiting");
   assert.equal(observation.statusBasis, "observed");
   assert.equal(observation.isWorking, false);

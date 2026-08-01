@@ -235,6 +235,7 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
     : createObservation(targetTurnId, latestTurn, previous);
   observation.pendingCalls ??= {};
   observation.activity ??= [];
+  observation.messages ??= [];
   observation.skills ??= [];
   observation.workingMilliseconds ??= 0;
   observation.workingSince ??= null;
@@ -252,6 +253,36 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
   for (const record of records) {
     const payload = record.payload ?? {};
     applyWorkingRecord(observation, record);
+    if (
+      record.type === "response_item"
+      && (payload.type === "function_call" || payload.type === "custom_tool_call")
+    ) {
+      const rawInput = payload.arguments ?? payload.input;
+      const plan = extractPlanUpdate(
+        payload.name ?? payload.tool_name ?? "tool",
+        rawInput,
+        parseArguments(rawInput),
+      );
+      if (plan) observation.plan = plan;
+    }
+    if (
+      record.type === "response_item"
+      && payload.type === "message"
+      && payload.role === "assistant"
+    ) {
+      const text = (payload.content ?? [])
+        .filter(({ type }) => type === "output_text")
+        .map(({ text: value }) => value)
+        .join("\n")
+        .trim();
+      if (text) {
+        observation.messages.push({
+          id: payload.id ?? `message-${record.timestamp}`,
+          at: toIso(record.timestamp),
+          text,
+        });
+      }
+    }
 
     if (record.type === "event_msg" && payload.type === "task_started") {
       activeTurnId = payload.turn_id ?? targetTurnId;
@@ -287,6 +318,10 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
     .filter((item, index, items) => items.findIndex(({ id }) => id === item.id) === index)
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .slice(0, 4);
+  observation.messages = observation.messages
+    .filter((item, index, items) => items.findIndex(({ id }) => id === item.id) === index)
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .slice(0, 10);
   observation.durationSeconds = getDurationSeconds(observation, nowMs);
   return observation;
 }
@@ -298,7 +333,8 @@ function createObservation(turnId, turn, previous = null) {
     assignedWork: "",
     model: null,
     skills: [],
-    plan: null,
+    plan: structuredClone(previous?.plan ?? null),
+    messages: structuredClone(previous?.messages ?? []),
     tokens: null,
     status: "idle",
     currentActivity: null,
@@ -378,23 +414,16 @@ function applyResponseRecord(observation, record) {
   if (payload.type === "function_call" || payload.type === "custom_tool_call") {
     const callId = payload.call_id ?? payload.id;
     const name = payload.name ?? payload.tool_name ?? "tool";
-    const input = parseArguments(payload.arguments ?? payload.input);
+    const rawInput = payload.arguments ?? payload.input;
+    const input = parseArguments(rawInput);
     const step = classifyToolCall(name, input);
-    const label = getToolLabel(name, input);
+    const label = getToolLabel(name, input, rawInput);
     observation.pendingCalls[callId] = {
       name,
       step,
       label,
       startedAt: toIso(record.timestamp),
     };
-    if (name.split(".").at(-1) === "update_plan") {
-      observation.plan = {
-        tasks: (input.plan ?? []).map((task) => ({
-          title: task.step,
-          status: PLAN_STATUS[task.status] ?? task.status,
-        })),
-      };
-    }
     observation.activity.push({
       id: payload.id ?? callId,
       at: toIso(record.timestamp),
@@ -472,12 +501,171 @@ function parseArguments(value) {
   }
 }
 
-function getToolLabel(name, input) {
+function extractPlanUpdate(name, rawInput, input) {
   const leaf = String(name).split(".").at(-1);
-  if (leaf === "shell_command" && typeof input.command === "string") {
-    return input.command.split(/\r?\n/, 1)[0].trim() || leaf;
+  if (leaf === "update_plan") return normalizePlan(input.plan ?? []);
+  if (leaf !== "exec" || typeof rawInput !== "string") return null;
+
+  let latest = null;
+  for (const inputSource of findUpdatePlanInputs(rawInput)) {
+    const planMatch = inputSource.match(
+      /^\s*\{[\s\S]*?(?:"plan"|\bplan)\s*:\s*\[([\s\S]*?)\]\s*,?\s*\}\s*$/,
+    );
+    if (!planMatch) continue;
+    const source = planMatch[1];
+    const taskPattern = /\{\s*(?:"step"|step)\s*:\s*("(?:\\.|[^"\\])*")\s*,\s*(?:"status"|status)\s*:\s*"(completed|in_progress|pending)"\s*,?\s*\}/g;
+    if (source.replace(taskPattern, "").replace(/[\s,]/g, "")) continue;
+    try {
+      latest = normalizePlan([...source.matchAll(taskPattern)].map((match) => ({
+        step: JSON.parse(match[1]),
+        status: match[2],
+      })));
+    } catch {
+      // 불완전한 exec 소스는 기존 Plan을 덮어쓰지 않는다.
+    }
   }
-  return leaf;
+  return latest;
+}
+
+// ponytail: 실행 없이 문자열·주석·괄호만 구분한다. App Server가 Plan 이력을 주면 제거한다.
+function findUpdatePlanInputs(source) {
+  const token = "tools.update_plan";
+  const inputs = [];
+  for (let index = 0; index < source.length;) {
+    const skipped = skipJsText(source, index);
+    if (skipped !== index) {
+      index = skipped;
+      continue;
+    }
+    if (
+      source.startsWith(token, index)
+      && !/[\w$]/.test(source[index - 1] ?? "")
+    ) {
+      let open = index + token.length;
+      while (/\s/.test(source[open] ?? "")) open += 1;
+      const call = source[open] === "(" ? readCallInput(source, open) : null;
+      if (call) {
+        inputs.push(call.input);
+        index = call.end;
+        continue;
+      }
+      index += token.length;
+      continue;
+    }
+    index += 1;
+  }
+  return inputs;
+}
+
+function readCallInput(source, open) {
+  let depth = 1;
+  for (let index = open + 1; index < source.length;) {
+    const skipped = skipJsText(source, index);
+    if (skipped !== index) {
+      index = skipped;
+      continue;
+    }
+    if (source[index] === "(") depth += 1;
+    if (source[index] === ")" && --depth === 0) {
+      return { input: source.slice(open + 1, index), end: index + 1 };
+    }
+    index += 1;
+  }
+  return null;
+}
+
+function skipJsText(source, index) {
+  const quote = source[index];
+  if (["\"", "'", "`"].includes(quote)) {
+    for (let cursor = index + 1; cursor < source.length; cursor += 1) {
+      if (source[cursor] === "\\") cursor += 1;
+      else if (source[cursor] === quote) return cursor + 1;
+    }
+    return source.length;
+  }
+  if (source.startsWith("//", index)) {
+    const newline = source.indexOf("\n", index + 2);
+    return newline < 0 ? source.length : newline + 1;
+  }
+  if (source.startsWith("/*", index)) {
+    const close = source.indexOf("*/", index + 2);
+    return close < 0 ? source.length : close + 2;
+  }
+  return index;
+}
+
+function normalizePlan(tasks) {
+  return {
+    tasks: tasks.map((task) => ({
+      title: task.step,
+      status: PLAN_STATUS[task.status] ?? task.status,
+    })),
+  };
+}
+
+function getToolLabel(name, input, rawInput) {
+  const leaf = String(name).split(".").at(-1);
+  if (leaf === "shell_command") {
+    const command = summarizeCommand(input.command);
+    return command ? `Run · ${command}` : "Run command";
+  }
+  if (leaf === "exec") return summarizeExec(rawInput) ?? "Run tool batch";
+  if (leaf === "wait") return formatWait("Wait for command", input.yield_time_ms);
+  if (leaf === "wait_agent") return formatWait("Wait for child agents", input.timeout_ms);
+  if (leaf === "request_user_input") return "Wait for user input";
+  if (leaf === "update_plan") {
+    const count = Array.isArray(input.plan) ? input.plan.length : 0;
+    return count ? `Update plan · ${count} tasks` : "Update plan";
+  }
+  if (leaf === "apply_patch") return "Edit files";
+  return humanizeToolName(leaf);
+}
+
+function summarizeExec(source) {
+  if (typeof source !== "string") return null;
+  // ponytail: exec 표시는 첫 관찰 가능한 도구만 요약한다. 전체 실행 추적이 필요해지면 AST로 교체한다.
+  const nested = source.match(/\btools\.([A-Za-z_$][\w$]*)\s*\(/)?.[1];
+  if (!nested) return null;
+  if (nested === "shell_command") {
+    const literal = source.match(/\bcommand\s*:\s*("(?:\\.|[^"\\])*")/)?.[1];
+    if (literal) {
+      try {
+        return `Run · ${summarizeCommand(JSON.parse(literal))}`;
+      } catch {
+        return "Run command";
+      }
+    }
+    return "Run command";
+  }
+  if (nested === "update_plan") {
+    const count = extractPlanUpdate("exec", source, {})?.tasks.length ?? 0;
+    return count ? `Update plan · ${count} tasks` : "Update plan";
+  }
+  return `Call · ${humanizeToolName(nested)}`;
+}
+
+function summarizeCommand(value) {
+  let command = String(value ?? "")
+    .split(/\r?\n/, 1)[0]
+    .replace(/\s+/g, " ")
+    .trim();
+  command = command.replace(
+    /((?:token|password|secret|api[_-]?key|authorization)\s*(?:[:=]\s*|\s+))(?:("(?:\\.|[^"\\])*")|('(?:\\.|[^'\\])*')|[^\s;]+)/gi,
+    "$1***",
+  );
+  const graphifyQuery = command.match(/^graphify\s+query\b/i)?.[0];
+  if (graphifyQuery) return graphifyQuery;
+  return command.length > 96 ? `${command.slice(0, 95)}…` : command;
+}
+
+function formatWait(label, milliseconds) {
+  const seconds = Number.isFinite(milliseconds) ? Math.round(milliseconds / 1000) : 0;
+  return seconds > 0 ? `${label} · up to ${seconds}s` : label;
+}
+
+function humanizeToolName(value) {
+  const words = String(value).replace(/_+/g, " ").trim();
+  return words ? `${words[0].toUpperCase()}${words.slice(1)}` : "Tool call";
 }
 
 function activityKind(step) {

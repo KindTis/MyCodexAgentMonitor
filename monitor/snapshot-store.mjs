@@ -517,6 +517,7 @@ function buildSessions({
         goal: normalizeGoal(goals.get(rootId)),
         children: childItems,
         activity: structuredClone(observation.activity),
+        messages: structuredClone(observation.messages),
       };
     })
     .filter(Boolean)
@@ -567,6 +568,7 @@ function buildChild(thread, observation, goal, rootId) {
     goal: normalizeGoal(goal),
     currentWork: buildCurrentWork(observation),
     activity: structuredClone(observation.activity),
+    messages: structuredClone(observation.messages),
   };
 }
 
