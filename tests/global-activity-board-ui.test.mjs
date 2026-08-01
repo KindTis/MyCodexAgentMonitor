@@ -57,13 +57,13 @@ function rootSession(id, status, overrides = {}) {
   };
 }
 
-test("글로벌 보드는 루트 카드를 6개 고정 레인에 한 번씩 렌더링한다", () => {
+test("글로벌 보드는 루트 카드를 4개 고정 레인에 한 번씩 렌더링한다", () => {
   const sessions = [
-    rootSession("attention", "blocked"),
-    rootSession("working", "running"),
-    rootSession("waiting", "waiting"),
+    rootSession("active", "running"),
     rootSession("planning", "planning"),
+    rootSession("waiting", "needs_input"),
     rootSession("inactive", "idle"),
+    rootSession("failed", "failed"),
     rootSession("complete", "complete"),
   ];
   const markup = renderToStaticMarkup(createElement(GlobalActivityBoard, {
@@ -81,12 +81,10 @@ test("글로벌 보드는 루트 카드를 6개 고정 레인에 한 번씩 렌�
   }));
 
   for (const label of [
-    "Attention",
-    "Working",
+    "Active",
     "Waiting",
-    "Planning",
     "Inactive",
-    "Complete",
+    "Ended",
   ]) {
     assert.match(markup, new RegExp(`>${label}<`));
   }

@@ -46,19 +46,13 @@ const OPERATIONAL_RANK = {
 };
 
 export const ACTIVITY_LANES = [
-  {
-    id: "attention",
-    label: "Attention",
-    statuses: ["needs_input", "blocked", "failed"],
-  },
-  { id: "working", label: "Working", statuses: ["running"] },
-  { id: "waiting", label: "Waiting", statuses: ["waiting"] },
-  { id: "planning", label: "Planning", statuses: ["planning", "queued"] },
+  { id: "active", label: "Active", statuses: ["running", "planning", "queued"] },
+  { id: "waiting", label: "Waiting", statuses: ["waiting", "needs_input", "blocked"] },
   { id: "inactive", label: "Inactive", statuses: ["idle", "paused"] },
   {
-    id: "complete",
-    label: "Complete",
-    statuses: ["complete", "cancelled", "stopped"],
+    id: "ended",
+    label: "Ended",
+    statuses: ["complete", "failed", "cancelled", "stopped"],
   },
 ];
 

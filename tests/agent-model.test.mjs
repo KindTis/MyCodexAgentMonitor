@@ -274,7 +274,7 @@ test("scrolls only enough to reveal a selected row in the rendered viewport", ()
   );
 });
 
-test("모든 화면 상태를 고정된 6개 글로벌 레인에 정확히 한 번 배치한다", () => {
+test("모든 화면 상태를 고정된 4개 글로벌 레인에 정확히 한 번 배치한다", () => {
   const sessions = [
     ["needs", "needs_input"],
     ["blocked", "blocked"],
@@ -296,12 +296,10 @@ test("모든 화면 상태를 고정된 6개 글로벌 레인에 정확히 한 �
   assert.deepEqual(
     ACTIVITY_LANES.map(({ id, label }) => [id, label]),
     [
-      ["attention", "Attention"],
-      ["working", "Working"],
+      ["active", "Active"],
       ["waiting", "Waiting"],
-      ["planning", "Planning"],
       ["inactive", "Inactive"],
-      ["complete", "Complete"],
+      ["ended", "Ended"],
     ],
   );
   assert.deepEqual(
@@ -310,12 +308,10 @@ test("모든 화면 상태를 고정된 6개 글로벌 레인에 정확히 한 �
       items.map((session) => session.id),
     ])),
     {
-      attention: ["blocked", "failed", "needs"],
-      working: ["running"],
-      waiting: ["waiting"],
-      planning: ["planning", "queued"],
+      active: ["running", "planning", "queued"],
+      waiting: ["blocked", "needs", "waiting"],
       inactive: ["idle", "paused", "unknown"],
-      complete: ["cancelled", "complete", "stopped"],
+      ended: ["failed", "cancelled", "complete", "stopped"],
     },
   );
   assert.equal(
@@ -356,12 +352,12 @@ test("글로벌 레인은 최근 활동, 시작 시각, ID 순으로 안정 정�
     },
   ];
 
-  const working = getActivityBoardLanes(sessions)
-    .find(({ id }) => id === "working")
+  const active = getActivityBoardLanes(sessions)
+    .find(({ id }) => id === "active")
     .sessions;
 
   assert.deepEqual(
-    working.map(({ id }) => id),
+    active.map(({ id }) => id),
     ["latest", "later-start", "a-id", "b-id", "missing"],
   );
   assert.deepEqual(
