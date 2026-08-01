@@ -16,6 +16,7 @@
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@phosphor-icons/react": "^2.1.10",
     "@vitejs/plugin-react": "5.0.4",
+    "ccusage": "20.0.19",
     "gsap": "^3.15.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",

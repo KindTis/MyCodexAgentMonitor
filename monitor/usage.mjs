@@ -3,10 +3,12 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const CCUSAGE_TIMEOUT_MS = 5000;
+const USAGE_TIME_ZONE = "Asia/Seoul";
 const LOCAL_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
+  timeZone: USAGE_TIME_ZONE,
 });
 
 export const USAGE_COLLECTION_INTERVAL_MS = 10000;
@@ -42,7 +44,7 @@ function readNonNegativeFinite(record, field) {
 
 export function parseCcusageDaily(payload, now = new Date()) {
   const today = getRows(payload).find(({ date }) => date === getLocalDateKey(now));
-  if (!today) return { todayTokens: 0, todayCostUsd: 0 };
+  if (!today) return { todayTokens: null, todayCostUsd: null };
 
   const todayTokens = readNonNegativeFinite(today, "totalTokens");
   if (todayTokens == null) throw new Error("invalid totalTokens");
@@ -97,7 +99,7 @@ export function parseCodexRateLimits(payload) {
 export async function readCcusageDaily(now = new Date(), run = execFileAsync) {
   const { stdout } = await run(
     process.env.ComSpec ?? "cmd.exe",
-    ["/d", "/s", "/c", "ccusage codex daily --json"],
+    ["/d", "/s", "/c", `ccusage codex daily --json --timezone ${USAGE_TIME_ZONE}`],
     { encoding: "utf8", timeout: CCUSAGE_TIMEOUT_MS, windowsHide: true },
   );
   return parseCcusageDaily(JSON.parse(stdout), now);

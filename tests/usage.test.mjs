@@ -11,6 +11,19 @@ import {
 
 const now = new Date(2026, 6, 26, 20, 19, 44);
 
+test("UTC 15시 이후 사용량을 KST 다음날 행에서 읽는다", () => {
+  assert.deepEqual(
+    parseCcusageDaily({
+      daily: [{
+        date: "2026-08-02",
+        totalTokens: 12,
+        costUSD: 0.5,
+      }],
+    }, new Date("2026-08-01T15:01:00.000Z")),
+    { todayTokens: 12, todayCostUsd: 0.5 },
+  );
+});
+
 test("로컬 오늘 ccusage 행의 토큰과 지원 비용 필드를 읽는다", () => {
   assert.deepEqual(
     parseCcusageDaily({
@@ -34,7 +47,7 @@ test("로컬 오늘 ccusage 행의 토큰과 지원 비용 필드를 읽는다",
   );
 });
 
-test("정상 ccusage JSON에 로컬 오늘 행이 없으면 0을 반환한다", () => {
+test("정상 ccusage JSON에 로컬 오늘 행이 없으면 null을 반환한다", () => {
   assert.deepEqual(
     parseCcusageDaily({
       daily: [{
@@ -43,7 +56,7 @@ test("정상 ccusage JSON에 로컬 오늘 행이 없으면 0을 반환한다", 
         costUSD: 0.1,
       }],
     }, now),
-    { todayTokens: 0, todayCostUsd: 0 },
+    { todayTokens: null, todayCostUsd: null },
   );
 });
 
@@ -126,7 +139,12 @@ test("전역 ccusage 명령을 고정 인자로 실행한다", async () => {
 
   assert.deepEqual(result, { todayTokens: 12, todayCostUsd: 0.5 });
   assert.equal(call.command, process.env.ComSpec ?? "cmd.exe");
-  assert.deepEqual(call.args, ["/d", "/s", "/c", "ccusage codex daily --json"]);
+  assert.deepEqual(call.args, [
+    "/d",
+    "/s",
+    "/c",
+    "ccusage codex daily --json --timezone Asia/Seoul",
+  ]);
   assert.equal(call.options.timeout, 5000);
   assert.equal(call.options.windowsHide, true);
 });

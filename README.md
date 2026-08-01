@@ -30,7 +30,6 @@
 - Node.js와 npm
 - PATH에서 실행 가능한 `codex.cmd` 및 로그인된 Codex CLI
 - Git — 현재 브랜치 표시용
-- 선택 사항: `ccusage` — 오늘의 토큰과 비용 표시용
 
 ```powershell
 git clone https://github.com/KindTis/MyCodexAgentMonitor.git
@@ -45,7 +44,7 @@ npm run monitor
 > `Live / Paused`는 화면에 새 스냅샷을 적용할지 결정할 뿐 Codex Agent의 작업을 중지하지 않습니다.
 
 > [!NOTE]
-> `ccusage`를 사용할 수 없거나 사용량 조회가 실패하면 해당 값만 `—`로 표시되고 세션 모니터링은 계속됩니다.
+> `ccusage`는 프로젝트 의존성으로 설치되며 오늘의 토큰과 비용을 KST(`Asia/Seoul`) 기준으로 집계합니다. 사용량 조회가 실패하면 해당 값만 `—`로 표시되고 세션 모니터링은 계속됩니다.
 
 ## 동작 구조
 
