@@ -490,6 +490,7 @@ function buildSessions({
         status: observation.status,
         statusBasis: observation.statusBasis,
         isWorking: observation.isWorking,
+        model: observation.model,
         currentActivity: cloneOrNull(observation.currentActivity),
         lastActivityAt: observation.lastActivityAt,
         startedAt: observation.startedAt,

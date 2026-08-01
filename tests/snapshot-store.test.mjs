@@ -268,6 +268,32 @@ test("catalog와 thread_spawn child를 합치고 fallback만 inferred로 표시�
   assert.equal(fallback.tokens, null);
 });
 
+test("루트 session도 관찰된 model을 snapshot에 노출한다", async () => {
+  const root = thread("root", {
+    updatedAt: unix("2026-07-26T06:00:00Z"),
+  });
+  const harness = createStoreHarness({
+    threads: [root],
+    startedAt: "2026-07-26T06:00:00Z",
+    initialRecords: {
+      root: [
+        sessionEvent("2026-07-26T06:00:00Z", "task_started", {
+          turn_id: "root-turn",
+        }),
+        {
+          timestamp: "2026-07-26T06:00:01Z",
+          type: "turn_context",
+          payload: { turn_id: "root-turn", model: "gpt-5.6-sol" },
+        },
+      ],
+    },
+  });
+
+  const snapshot = await harness.store.initialize();
+
+  assert.equal(snapshot.sessions[0].model, "gpt-5.6-sol");
+});
+
 test("JSONL-only child를 같은 ID의 상세 정보로 갱신한다", async () => {
   const spawnSource = {
     subagent: { thread_spawn: { parent_thread_id: "root" } },
