@@ -590,6 +590,59 @@ test("catalog 경계 밖 root도 JSONL 파일 크기 변화 후보로 등록한�
   assert.deepEqual(snapshot.sessions.map(({ id }) => id), ["stale-active-root"]);
 });
 
+test("늦게 등록된 root는 watermark 이전 JSONL child도 복구한다", async () => {
+  const staleRoot = thread("stale-active-root", {
+    updatedAt: unix("2026-07-26T05:30:00Z"),
+    recencyAt: unix("2026-07-26T05:30:00Z"),
+  });
+  const oldChild = thread("old-child", {
+    parentThreadId: staleRoot.id,
+    source: "subAgentThreadSpawn",
+    createdAt: unix("2026-07-26T05:40:00Z"),
+    updatedAt: unix("2026-07-26T05:41:00Z"),
+    turns: [],
+  });
+  let rootScanCount = 0;
+  const harness = createStoreHarness({
+    threads: [staleRoot, oldChild],
+    startedAt: "2026-07-26T06:00:00Z",
+    initialRecords: {
+      "stale-active-root": [sessionEvent("2026-07-26T05:30:00Z", "task_started", {
+        turn_id: "stale-active-root-turn",
+      })],
+      "old-child": [sessionEvent("2026-07-26T05:40:00Z", "task_started", {
+        turn_id: "old-child-turn",
+      })],
+    },
+    discoverChildren: async ({ parentThreadIds, updatedAfterMs, knownFiles }) => {
+      if (knownFiles) {
+        rootScanCount += 1;
+        knownFiles.set(staleRoot.path, rootScanCount);
+        return rootScanCount === 1 ? [] : [structuredClone(staleRoot)];
+      }
+      return parentThreadIds.includes(staleRoot.id) && updatedAfterMs === 0
+        ? [structuredClone(oldChild)]
+        : [];
+    },
+  });
+  await harness.store.initialize();
+
+  harness.setNow("2026-07-26T06:00:02Z");
+  harness.appendRecord("stale-active-root", {
+    timestamp: "2026-07-26T06:00:01Z",
+    type: "response_item",
+    payload: {
+      type: "function_call",
+      name: "read_file",
+      arguments: '{"path":"src/App.jsx"}',
+      call_id: "recent-read",
+    },
+  });
+  const snapshot = await harness.store.collect();
+
+  assert.deepEqual(snapshot.sessions[0].children.map(({ id }) => id), ["old-child"]);
+});
+
 test("JSONL 변화 root의 App Server read 실패에서는 파일 크기 baseline을 전진시키지 않는다", async () => {
   const staleRoot = thread("retry-root", {
     updatedAt: unix("2026-07-26T05:30:00Z"),

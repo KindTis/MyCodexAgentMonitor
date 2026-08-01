@@ -176,6 +176,16 @@ export class SnapshotStore {
           parentThreadIds: [...registeredRoots],
           updatedAfterMs: childBoundary * 1000,
         });
+        const newRootIds = [...registeredRoots].filter(
+          (rootId) => !this.#registeredRoots.has(rootId),
+        );
+        if (childBoundary !== 0 && newRootIds.length) {
+          discoveredFromJsonl.push(...await this.discoverChildren({
+            codexHome: this.codexHome,
+            parentThreadIds: newRootIds,
+            updatedAfterMs: 0,
+          }));
+        }
       } catch (error) {
         throw new SessionReadFailure({ cause: error });
       }
