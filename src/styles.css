@@ -572,10 +572,6 @@ time,
   white-space: nowrap;
 }
 
-.session-agent strong {
-  color: color-mix(in srgb, var(--blue) 80%, var(--text));
-}
-
 .session-agent small,
 .session-assignment small,
 .session-state > small,
@@ -589,16 +585,10 @@ time,
 }
 
 .session-assignment strong {
-  color: var(--violet);
   font: 12px/1.2 "Geist Variable", sans-serif;
 }
 
-.session-agent small {
-  color: var(--blue);
-}
-
 .session-time strong {
-  color: var(--amber);
   font-family: "Geist Mono Variable", monospace;
   font-size: 12px;
 }
@@ -958,7 +948,6 @@ time,
   display: flex;
   align-items: center;
   gap: 5px;
-  color: var(--muted);
   font-size: 8.5px;
 }
 
@@ -973,12 +962,29 @@ time,
   overflow-wrap: anywhere;
 }
 
-.global-card-work {
+.session-agent strong,
+.global-card-identity strong {
+  color: var(--text);
+}
+
+.session-agent small,
+.global-card-identity small {
   color: var(--secondary);
 }
 
+.session-assignment strong,
+.global-card-work {
+  color: color-mix(in srgb, var(--blue) 80%, var(--text));
+}
+
+.session-activity,
 .global-card-activity {
   color: var(--muted);
+}
+
+.session-time strong,
+.global-card-time {
+  color: var(--cyan);
 }
 
 .global-card-activity--updated {

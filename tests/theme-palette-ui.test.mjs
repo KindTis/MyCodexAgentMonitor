@@ -37,11 +37,15 @@ test("상단 요약은 세션·비용·사용량·시간 역할을 개별 색으
   assert.match(css, /\.system-summary time\.summary-clock[\s\S]*?color: var\(--cyan\);/);
 });
 
+test("세션 목록과 글로벌 레인 카드는 공통 정보 역할 색을 공유한다", () => {
+  assert.match(css, /\.session-agent strong,\s*\.global-card-identity strong\s*\{[^}]*color: var\(--text\);/s);
+  assert.match(css, /\.session-agent small,\s*\.global-card-identity small\s*\{[^}]*color: var\(--secondary\);/s);
+  assert.match(css, /\.session-assignment strong,\s*\.global-card-work\s*\{[^}]*color: color-mix\(in srgb, var\(--blue\) 80%, var\(--text\)\);/s);
+  assert.match(css, /\.session-activity,\s*\.global-card-activity\s*\{[^}]*color: var\(--muted\);/s);
+  assert.match(css, /\.session-time strong,\s*\.global-card-time\s*\{[^}]*color: var\(--cyan\);/s);
+});
+
 test("세션 목록과 상세 카드는 정보 역할별 Modern Dark 강조색을 사용한다", () => {
-  assert.match(
-    css,
-    /\.session-agent strong[\s\S]*?color: color-mix\(in srgb, var\(--blue\) 80%, var\(--text\)\);/,
-  );
   assert.match(css, /\.session-skills \.metric-value strong[\s\S]*?color: var\(--violet\);/);
   assert.match(css, /\.session-tasks \.metric-value strong[\s\S]*?color: var\(--amber\);/);
   assert.match(css, /\.session-goal \.metric-value strong[\s\S]*?color: var\(--violet\);/);
