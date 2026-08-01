@@ -7,6 +7,7 @@ import {
   discoverChildCandidates,
   IDLE_AFTER_MS,
   reduceThreadRecords,
+  SessionPathBoundaryError,
 } from "./session-log.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -382,8 +383,15 @@ export class SnapshotStore {
   }
 
   async #readObservation(previous, thread, nowMs) {
+    let records = [];
     try {
-      const records = thread.path == null ? [] : await this.tailer.read(thread.path);
+      records = thread.path == null ? [] : await this.tailer.read(thread.path);
+    } catch (error) {
+      if (!(error instanceof SessionPathBoundaryError)) {
+        throw new SessionReadFailure({ cause: error });
+      }
+    }
+    try {
       return reduceThreadRecords(previous ?? null, records, thread, nowMs);
     } catch (error) {
       throw new SessionReadFailure({ cause: error });

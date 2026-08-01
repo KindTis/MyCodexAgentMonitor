@@ -777,6 +777,30 @@ test("path가 null인 ephemeral Thread는 App Server Turn만으로 조립한다"
   assert.equal(snapshot.sessions[0].tokens.root, 0);
 });
 
+test("CODEX_HOME 밖 App Server Thread는 JSONL을 건너뛰고 연결 상태를 유지한다", async (t) => {
+  const codexHome = await mkdtemp(path.join(tmpdir(), "snapshot-store-home-"));
+  const outside = await mkdtemp(path.join(tmpdir(), "snapshot-store-outside-"));
+  t.after(() => rm(codexHome, { recursive: true, force: true }));
+  t.after(() => rm(outside, { recursive: true, force: true }));
+  const outsideFile = path.join(outside, "session.jsonl");
+  await writeFile(outsideFile, "{}\n", "utf8");
+  const external = thread("external", { path: outsideFile });
+  const store = new SnapshotStore({
+    appServer: createFakeCatalog([external]),
+    tailer: new JsonlTailer({ codexHome }),
+    codexHome,
+    now: () => Date.parse("2026-07-26T06:00:00Z"),
+    readRepoMetadata: async () => ({ projectName: "repo", gitBranch: "main" }),
+    discoverChildren: async () => [],
+  });
+
+  const snapshot = await store.initialize();
+
+  assert.equal(snapshot.connectionStatus, "connected");
+  assert.equal(snapshot.errorCode, null);
+  assert.deepEqual(snapshot.sessions.map(({ id }) => id), ["external"]);
+});
+
 test("한 session read 실패는 전체 후보와 queue를 폐기하고 다음 수집에서 함께 복구한다", async () => {
   const roots = [
     thread("root-a", { updatedAt: unix("2026-07-26T05:59:30Z") }),
