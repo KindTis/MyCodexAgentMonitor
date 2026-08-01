@@ -26,7 +26,8 @@ Rules:
 - The product name is `My Codex Agent Monitor`; the in-page brand is `Orbital Dispatch`.
 - Use the Quiet Data Studio design from `assets/orbital-dispatch-quiet-data-studio.png` as the visual source of truth.
 - Use Geist Sans for UI copy, Geist Mono only for times, IDs, code, and numeric readouts, and Phosphor regular icons throughout.
-- Use the restrained navy palette (`#090D15`, `#0F1520`, `#151D2A`) with cool white text and indigo, violet, mint, amber, and coral only for hierarchy and state.
+- Use the restrained navy palette (`#090C13`, `#101521`, `#161C29`) with cool white text and indigo, violet, cyan, amber, and coral only for hierarchy and state.
+- Modern Dark 상태 팔레트에 녹색·민트 계열을 사용하지 않는다. Running은 인디고, Complete/Planning은 바이올렛, Connected/Live는 시안 블루, Waiting/Syncing은 앰버, Attention/Error는 코랄, inactive 상태는 슬레이트를 사용한다.
 - Prefer divider-based regions, one selected-session rail, and flat tinted states; avoid terminal styling, glow effects, decorative gradients, and nested card chrome.
 - The top list must show agent, session/assigned work, state/current activity, session time, skills, task completion, Goal use, and active/total child agents.
 - Identify each root session in the top list by the final folder name of its `cwd` and its current Git branch; do not repeat fixed `Codex` or `Root agent` labels there.

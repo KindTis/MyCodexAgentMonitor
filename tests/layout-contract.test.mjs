@@ -84,15 +84,15 @@ test("데스크톱 상세 열과 각 열의 행 비율이 정확하다", () => {
   );
 });
 
-test("Quiet Data Studio 핵심 토큰과 읽기 가능한 기본 글자 크기를 사용한다", () => {
+test("Modern Dark 핵심 토큰과 읽기 가능한 기본 글자 크기를 사용한다", () => {
   const root = declarations(":root");
-  assert.match(root, /--bg: #090d15/);
-  assert.match(root, /--panel: #0f1520/);
-  assert.match(root, /--panel-raised: #151d2a/);
-  assert.match(root, /--text: #f5f7fa/);
-  assert.match(root, /--muted: #8d98a8/);
+  assert.match(root, /--bg: #090c13/);
+  assert.match(root, /--panel: #101521/);
+  assert.match(root, /--panel-raised: #161c29/);
+  assert.match(root, /--text: #f2f5fa/);
+  assert.match(root, /--muted: #7c8799/);
   assert.match(root, /--blue: #718bff/);
-  assert.match(root, /--mint: #49d5ad/);
+  assert.match(root, /--cyan: #38bdf8/);
   assert.match(declarations("body"), /font-size: 14px/);
 });
 

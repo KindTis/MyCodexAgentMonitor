@@ -137,7 +137,7 @@ function AgentMark({ item, size = 34, active = false, handoff = false }) {
     <span
       className={`agent-mark ${active ? "agent-mark--active" : ""} ${handoff ? "agent-mark--handoff" : ""}`}
       style={{
-        "--agent-color": child ? "#9a82f4" : "#718bff",
+        "--agent-color": child ? "#a78bfa" : "#718bff",
         width: size,
         height: size,
       }}
@@ -464,7 +464,9 @@ export function GlobalActivityBoard({
       <header className="global-board-heading">
         <h2 id="global-activity-title" tabIndex={-1}>Global activity</h2>
         <div className="global-board-meta">
-          <span>{isLive ? "Live" : "Paused"}</span>
+          <span className={isLive ? "global-board-mode--live" : undefined}>
+            {isLive ? "Live" : "Paused"}
+          </span>
           <time>Last applied {snapshotAge || "unavailable"}</time>
         </div>
       </header>
