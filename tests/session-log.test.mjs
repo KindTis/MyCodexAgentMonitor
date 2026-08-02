@@ -466,6 +466,38 @@ test("최근 assistant 메시지 원문을 최신순 10개까지 수집한다", 
   assert.doesNotMatch(JSON.stringify(result.messages), /사용자|비공개|내부 에이전트/);
 });
 
+test("child가 발신한 send_message만 최근 메시지로 수집한다", () => {
+  const records = [
+    event("2026-08-01T19:02:00Z", "task_started", { turn_id: "current" }),
+    toolCall(
+      "2026-08-01T19:02:01Z",
+      "send_message",
+      JSON.stringify({ target: "/root", message: "Volta가 전달한 결과입니다." }),
+      "send-1",
+    ),
+  ];
+
+  const child = reduceThreadRecords(
+    null,
+    records,
+    activeThread("current", { parentThreadId: "root" }),
+    Date.parse("2026-08-01T19:02:02Z"),
+  );
+  const root = reduceThreadRecords(
+    null,
+    records,
+    activeThread("current"),
+    Date.parse("2026-08-01T19:02:02Z"),
+  );
+
+  assert.deepEqual(child.messages, [{
+    id: "item-2026-08-01T19:02:01Z",
+    at: "2026-08-01T19:02:01.000Z",
+    text: "Volta가 전달한 결과입니다.",
+  }]);
+  assert.deepEqual(root.messages, []);
+});
+
 test("Recent Activity를 최신순 10개까지 수집한다", () => {
   const calls = Array.from({ length: 11 }, (_, index) => execCall(
     `2026-08-01T19:02:${String(index + 1).padStart(2, "0")}Z`,
