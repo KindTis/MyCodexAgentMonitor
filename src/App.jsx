@@ -117,7 +117,9 @@ const EMPTY_SNAPSHOT = {
     todayTokens: null,
     todayCostUsd: null,
     fiveHourUsedPercent: null,
+    fiveHourResetsAt: null,
     oneWeekUsedPercent: null,
+    oneWeekResetsAt: null,
   },
 };
 
@@ -1193,6 +1195,17 @@ export function animateUsageValue({
   });
 }
 
+export function formatResetCountdown(resetsAt, now) {
+  if (!Number.isFinite(resetsAt) || resetsAt < 0) return "-";
+  const totalMinutes = Math.max(0, Math.floor((resetsAt * 1000 - now) / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  return [days, hours, minutes]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":");
+}
+
 function AnimatedUsageValue({ value, format }) {
   const [displayedValue, setDisplayedValue] = useState(value);
   const displayedValueRef = useRef(value);
@@ -1270,13 +1283,35 @@ export function SystemSummary({
           />
         </span>
       </span>
-      <span className="summary-group summary-group--limits">
+      <span
+        className="summary-group summary-group--limits"
+        tabIndex={0}
+        aria-describedby="limit-reset-tooltip"
+      >
         | <span className="summary-stat summary-stat--five-hour">
           5H {formatPercent(usage?.fiveHourUsedPercent)}
         </span>
         {" · "}
         <span className="summary-stat summary-stat--one-week">
           1W {formatPercent(usage?.oneWeekUsedPercent)}
+        </span>
+        <span
+          className="limit-reset-tooltip"
+          id="limit-reset-tooltip"
+          role="tooltip"
+        >
+          <span className="limit-reset-row">
+            <span>5H reset</span>
+            <strong className="limit-reset-value limit-reset-value--five-hour">
+              {formatResetCountdown(usage?.fiveHourResetsAt, wallClock)}
+            </strong>
+          </span>
+          <span className="limit-reset-row">
+            <span>1W reset</span>
+            <strong className="limit-reset-value limit-reset-value--one-week">
+              {formatResetCountdown(usage?.oneWeekResetsAt, wallClock)}
+            </strong>
+          </span>
         </span>
       </span>
       <time className="summary-clock">| {formatLocalClock(wallClock)}</time>

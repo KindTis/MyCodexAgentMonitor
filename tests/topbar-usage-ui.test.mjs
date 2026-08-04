@@ -8,7 +8,11 @@ const server = await createServer({
   appType: "custom",
   server: { middlewareMode: true },
 });
-const { animateUsageValue, SystemSummary } = await server.ssrLoadModule("/src/App.jsx");
+const {
+  animateUsageValue,
+  formatResetCountdown,
+  SystemSummary,
+} = await server.ssrLoadModule("/src/App.jsx");
 
 test.after(async () => {
   await server.close();
@@ -29,15 +33,49 @@ test("상단 상태·오늘 사용량·Limit·로컬 시각을 합의된 순서�
       todayTokens: 522555500.6,
       todayCostUsd: 369.26156,
       fiveHourUsedPercent: 21.4,
+      fiveHourResetsAt: 1785252283,
       oneWeekUsedPercent: 6.2,
+      oneWeekResetsAt: 1785684403,
     },
   }));
   const text = markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
   assert.match(
     text,
-    /2 running 0 waiting 2 sessions \| Tokens 522,555,501 · Cost \$369\.2616 \| 5H 21% · 1W 6% \| 21:19:44 .+/,
+    /2 running 0 waiting 2 sessions \| Tokens 522,555,501 · Cost \$369\.2616 \| 5H 21% · 1W 6% 5H reset 02:03:04 1W reset 07:03:06 \| 21:19:44 .+/,
   );
+});
+
+test("Limit 리셋까지 남은 시간을 DD:HH:MM으로 표시한다", () => {
+  assert.equal(typeof formatResetCountdown, "function");
+  assert.equal(
+    formatResetCountdown(1800183899, 1800000000000),
+    "02:03:04",
+  );
+  assert.equal(
+    formatResetCountdown(1799999999, 1800000000000),
+    "00:00:00",
+  );
+  assert.equal(formatResetCountdown(null, 1800000000000), "-");
+});
+
+test("Limit 그룹은 hover와 키보드 focus용 리셋 툴팁을 제공한다", () => {
+  const markup = renderToStaticMarkup(createElement(SystemSummary, {
+    ...props,
+    wallClock: 1800000000000,
+    usage: {
+      fiveHourUsedPercent: 21,
+      fiveHourResetsAt: 1800183899,
+      oneWeekUsedPercent: 6,
+      oneWeekResetsAt: null,
+    },
+  }));
+  const text = markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+  assert.match(markup, /tabindex="0"/);
+  assert.match(markup, /aria-describedby="limit-reset-tooltip"/);
+  assert.match(markup, /id="limit-reset-tooltip" role="tooltip"/);
+  assert.match(text, /5H reset 02:03:04 1W reset -/);
 });
 
 test("조회 전 또는 실패한 사용량은 각 자리에 em dash를 표시한다", () => {

@@ -197,6 +197,60 @@ time,
   color: var(--violet);
 }
 
+.summary-group--limits {
+  position: relative;
+}
+
+.summary-group--limits:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
+
+.limit-reset-tooltip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  min-width: 150px;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--secondary);
+  background: var(--panel-raised);
+  font: 11px/1.2 "Geist Variable", "Segoe UI", sans-serif;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.limit-reset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.limit-reset-value {
+  font-family: "Geist Mono Variable", monospace;
+  font-weight: 500;
+}
+
+.limit-reset-value--five-hour {
+  color: var(--coral);
+}
+
+.limit-reset-value--one-week {
+  color: var(--violet);
+}
+
+.summary-group--limits:hover .limit-reset-tooltip,
+.summary-group--limits:focus .limit-reset-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
 .system-summary time.summary-clock {
   color: var(--cyan);
 }
