@@ -89,40 +89,80 @@ test("codex의 300분과 10080분 window를 독립적으로 선택한다", () =>
         },
         codex: {
           limitId: "codex",
-          primary: { usedPercent: 21.4, windowDurationMins: 300 },
-          secondary: { usedPercent: 106.2, windowDurationMins: 10080 },
+          primary: {
+            usedPercent: 21.4,
+            windowDurationMins: 300,
+            resetsAt: 1785771600,
+          },
+          secondary: {
+            usedPercent: 106.2,
+            windowDurationMins: 10080,
+            resetsAt: 1786203600,
+          },
         },
       },
     }),
-    { fiveHourUsedPercent: 21.4, oneWeekUsedPercent: 106.2 },
+    {
+      fiveHourUsedPercent: 21.4,
+      fiveHourResetsAt: 1785771600,
+      oneWeekUsedPercent: 106.2,
+      oneWeekResetsAt: 1786203600,
+    },
   );
 
   assert.deepEqual(
     parseCodexRateLimits({
       rateLimits: {
         limitId: "codex",
-        primary: { usedPercent: -1, windowDurationMins: 300 },
-        secondary: { usedPercent: 6, windowDurationMins: 10080 },
+        primary: {
+          usedPercent: -1,
+          windowDurationMins: 300,
+          resetsAt: 1785771600,
+        },
+        secondary: {
+          usedPercent: 6,
+          windowDurationMins: 10080,
+          resetsAt: -1,
+        },
       },
     }),
-    { fiveHourUsedPercent: null, oneWeekUsedPercent: 6 },
+    {
+      fiveHourUsedPercent: null,
+      fiveHourResetsAt: 1785771600,
+      oneWeekUsedPercent: 6,
+      oneWeekResetsAt: null,
+    },
   );
 });
 
 test("codex bucket 누락과 지원하지 않는 window는 해당 값을 null로 만든다", () => {
   assert.deepEqual(
     parseCodexRateLimits({ rateLimitsByLimitId: {} }),
-    { fiveHourUsedPercent: null, oneWeekUsedPercent: null },
+    {
+      fiveHourUsedPercent: null,
+      fiveHourResetsAt: null,
+      oneWeekUsedPercent: null,
+      oneWeekResetsAt: null,
+    },
   );
   assert.deepEqual(
     parseCodexRateLimits({
       rateLimits: {
         limitId: "codex",
-        primary: { usedPercent: 1, windowDurationMins: 15 },
+        primary: {
+          usedPercent: 1,
+          windowDurationMins: 15,
+          resetsAt: 1785771600,
+        },
         secondary: { usedPercent: 6, windowDurationMins: 10080 },
       },
     }),
-    { fiveHourUsedPercent: null, oneWeekUsedPercent: 6 },
+    {
+      fiveHourUsedPercent: null,
+      fiveHourResetsAt: null,
+      oneWeekUsedPercent: 6,
+      oneWeekResetsAt: null,
+    },
   );
 });
 
@@ -164,8 +204,16 @@ test("두 사용량 원천은 독립 실패하고 이전 값을 보존하지 않
     readLimits: async () => ({
       rateLimits: {
         limitId: "codex",
-        primary: { usedPercent: 21, windowDurationMins: 300 },
-        secondary: { usedPercent: 6, windowDurationMins: 10080 },
+        primary: {
+          usedPercent: 21,
+          windowDurationMins: 300,
+          resetsAt: 1785771600,
+        },
+        secondary: {
+          usedPercent: 6,
+          windowDurationMins: 10080,
+          resetsAt: 1786203600,
+        },
       },
     }),
   });
@@ -174,7 +222,9 @@ test("두 사용량 원천은 독립 실패하고 이전 값을 보존하지 않
     todayTokens: null,
     todayCostUsd: null,
     fiveHourUsedPercent: 21,
+    fiveHourResetsAt: 1785771600,
     oneWeekUsedPercent: 6,
+    oneWeekResetsAt: 1786203600,
   });
 
   const dailyOnly = await collectUsage({
@@ -189,7 +239,9 @@ test("두 사용량 원천은 독립 실패하고 이전 값을 보존하지 않
     todayTokens: 12,
     todayCostUsd: 0.5,
     fiveHourUsedPercent: null,
+    fiveHourResetsAt: null,
     oneWeekUsedPercent: null,
+    oneWeekResetsAt: null,
   });
   assert.equal(USAGE_COLLECTION_INTERVAL_MS, 10000);
 });

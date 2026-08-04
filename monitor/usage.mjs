@@ -21,7 +21,9 @@ export const EMPTY_USAGE = {
   todayTokens: null,
   todayCostUsd: null,
   fiveHourUsedPercent: null,
+  fiveHourResetsAt: null,
   oneWeekUsedPercent: null,
+  oneWeekResetsAt: null,
 };
 
 function getLocalDateKey(now) {
@@ -86,17 +88,20 @@ function findCodexBucket(payload) {
 }
 
 function readWindow(bucket, windowDurationMins) {
-  const window = [bucket?.primary, bucket?.secondary].find(
+  return [bucket?.primary, bucket?.secondary].find(
     (value) => value?.windowDurationMins === windowDurationMins,
   );
-  return readNonNegativeFinite(window, "usedPercent");
 }
 
 export function parseCodexRateLimits(payload) {
   const bucket = findCodexBucket(payload);
+  const fiveHour = readWindow(bucket, 300);
+  const oneWeek = readWindow(bucket, 10080);
   return {
-    fiveHourUsedPercent: readWindow(bucket, 300),
-    oneWeekUsedPercent: readWindow(bucket, 10080),
+    fiveHourUsedPercent: readNonNegativeFinite(fiveHour, "usedPercent"),
+    fiveHourResetsAt: readNonNegativeFinite(fiveHour, "resetsAt"),
+    oneWeekUsedPercent: readNonNegativeFinite(oneWeek, "usedPercent"),
+    oneWeekResetsAt: readNonNegativeFinite(oneWeek, "resetsAt"),
   };
 }
 
@@ -129,6 +134,8 @@ export async function collectUsage({
     todayTokens: dailyValue?.todayTokens ?? null,
     todayCostUsd: dailyValue?.todayCostUsd ?? null,
     fiveHourUsedPercent: limitValue?.fiveHourUsedPercent ?? null,
+    fiveHourResetsAt: limitValue?.fiveHourResetsAt ?? null,
     oneWeekUsedPercent: limitValue?.oneWeekUsedPercent ?? null,
+    oneWeekResetsAt: limitValue?.oneWeekResetsAt ?? null,
   };
 }
