@@ -95,6 +95,29 @@ test("데스크톱 상세 열과 각 열의 행 비율이 정확하다", () => {
   );
 });
 
+test("루트 Goal은 카드 크기를 유지하고 본문만 내부 스크롤한다", () => {
+  const detail = app.slice(
+    app.indexOf("function SessionDetail"),
+    app.indexOf("export function App"),
+  );
+  const goalStart = detail.indexOf('className={`detail-card goal-card');
+  const goalEnd = detail.indexOf("</article>", goalStart);
+  const goal = detail.slice(goalStart, goalEnd);
+
+  assert.ok(goalStart >= 0, "missing root Goal card");
+  assert.ok(goal.indexOf('className="card-header"') < goal.indexOf('className="goal-card-body"'));
+
+  const body = declarations(".goal-card-body");
+  assert.match(body, /min-height: 0/);
+  assert.match(body, /flex: 1/);
+  assert.match(body, /overflow-y: auto/);
+  assert.match(declarations(".detail-card"), /overflow: hidden/);
+  assert.match(
+    declarations(".detail-column--context"),
+    /grid-template-rows: minmax\(0, 25fr\) minmax\(0, 40fr\) minmax\(0, 35fr\)/,
+  );
+});
+
 test("Modern Dark 핵심 토큰과 읽기 가능한 기본 글자 크기를 사용한다", () => {
   const root = declarations(":root");
   assert.match(root, /--bg: #090c13/);

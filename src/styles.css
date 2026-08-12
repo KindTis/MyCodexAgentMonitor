@@ -1352,7 +1352,8 @@ time,
   line-height: 1.38;
 }
 
-.detail-card > p {
+.detail-card > p,
+.goal-card-body > p {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
@@ -1599,7 +1600,17 @@ time,
   animation: value-flash 900ms ease-out 1;
 }
 
-.goal-card > small {
+.goal-card-body {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: thin;
+}
+
+.goal-card > small,
+.goal-card-body > small {
   display: block;
   margin-top: 12px;
   padding-top: 9px;

@@ -1061,7 +1061,7 @@ export function SessionDetail({
               <b>{session.goal ? formatGoalStatus(session.goal.status) : "Not used"}</b>
             </header>
             {session.goal ? (
-              <>
+              <div className="goal-card-body">
                 <h3>{session.goal.objective}</h3>
                 <p>
                   Tokens {formatTokenCount(session.goal.tokensUsed)}
@@ -1069,7 +1069,7 @@ export function SessionDetail({
                   {formatTokenCount(session.goal.tokenBudget)}
                 </p>
                 <small>Time used · {formatDuration(session.goal.timeUsedSeconds)}</small>
-              </>
+              </div>
             ) : (
               <p className="empty-copy">This session is not operating under a Goal.</p>
             )}
