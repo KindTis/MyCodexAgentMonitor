@@ -8,7 +8,7 @@
 
 - 사용자에게 표시된 assistant 메시지 원문을 세션별 최신 10개까지 보존한다.
 - 사용자 입력, 추론, 도구 출력, 내부 agent 메시지는 계속 제외한다.
-- 루트 상세의 Current work 카드 내부는 Current work 40% / Recent messages 60% 비율을 유지한다. Current work 본문과 Recent messages 목록은 각각 자기 영역 안에서만 세로 스크롤하며 서로의 높이를 변경하지 않는다.
+- 루트 상세의 Current work 카드 내부는 Current work 40% / Recent messages 60% 비율을 유지한다. Current work의 제목 표시줄, 단계 아이콘, 구분선, 상태 행은 고정하고 작업 문자열만 줄바꿈과 세로 내부 스크롤을 적용한다. Recent messages는 목록만 내부 스크롤하며 두 영역은 서로의 높이를 변경하지 않는다.
 - Current work의 Recent messages 목록은 기존 3줄 clamp를 유지하고 남는 항목은 목록 내부에서 세로 스크롤한다.
 - 최초 snapshot은 강조하지 않고, 이후 실제로 추가된 메시지만 기존 Recent activity의 900ms 강조 효과를 적용한다.
 - 각 메시지 행은 키보드로 접근 가능한 버튼이다.

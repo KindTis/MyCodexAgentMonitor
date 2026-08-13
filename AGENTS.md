@@ -45,7 +45,7 @@ Rules:
 - Size the desktop shell from minimum dimensions and let it grow with the browser. Let the session list consume the ledger's available height and scroll only its overflow; do not reserve a fixed number of rows.
 - Lay out desktop session cards in four bands: agent/state, assignment/session time, current activity, and padded metrics. Point the session caret toward the detail panel: right in the desktop master-detail layout and down in the stacked layout.
 - 데스크톱 상세 3열은 35% / 35% / 30%를 유지한다. 1열은 Current work 전체, 2열은 Goal 25% / Recent activity 40% / Child agents 35%, 3열은 Plan Tasks 60% / Applied skills 20% / Token usage 20%로 배치한다.
-- 루트 상세의 Current work 카드 내부는 Current work 40% / Recent messages 60% 비율을 유지한다. 각 영역의 내용이 넘치면 해당 영역만 내부 스크롤하며 다른 영역의 높이를 변경하지 않는다.
+- 루트 상세의 Current work 카드 내부는 Current work 40% / Recent messages 60% 비율을 유지한다. Current work에서는 제목 표시줄, 단계 아이콘, 구분선, 상태 행을 고정하고 작업 문자열만 줄바꿈과 세로 내부 스크롤을 적용한다. Recent messages는 목록만 내부 스크롤하며 두 영역은 서로의 높이를 변경하지 않는다.
 - 루트와 Child Agent의 Current work에는 사용자에게 표시된 최근 agent 메시지 원문을 최신순 10개까지 항목당 최대 3줄로 표시하고 목록만 내부 스크롤한다. 행을 누르면 마우스 가까이에 전체 원문을 표시하며 다음 클릭이나 `Esc`로 닫는다. 실제 새 메시지만 기존 activity 강조 효과를 적용하고 사용자 입력·추론·도구 출력·내부 agent 메시지는 제외한다.
 - 루트와 Child Agent의 Recent activity는 `exec`, `wait` 같은 내부 도구명 대신 안전하게 요약한 명령·대기 대상·작업 수를 표시하고 비밀값은 노출하지 않는다. 실제 새 activity만 강조한다.
 - Do not make the whole selected-session detail an independent scroll area. Limit internal scrolling to long Plan Tasks, child-agent, recent-message, and recent-activity lists.
