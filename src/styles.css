@@ -1298,10 +1298,12 @@ time,
   overflow: hidden;
 }
 
-.current-work-body {
+.current-work-copy {
   min-height: 0;
   flex: 1;
+  overflow-x: hidden;
   overflow-y: auto;
+  overflow-wrap: anywhere;
 }
 
 .activity-card,

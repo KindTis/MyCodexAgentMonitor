@@ -95,7 +95,7 @@ test("데스크톱 상세 열과 각 열의 행 비율이 정확하다", () => {
   );
 });
 
-test("루트 Current work와 Recent messages는 40/60 비율을 유지하고 각자 내부 스크롤한다", () => {
+test("루트 Current work는 문자열만 스크롤하고 상태 영역과 40/60 비율을 고정한다", () => {
   const detail = app.slice(
     app.indexOf("function SessionDetail"),
     app.indexOf("export function App"),
@@ -106,7 +106,10 @@ test("루트 Current work와 Recent messages는 40/60 비율을 유지하고 각
 
   assert.ok(cardStart >= 0, "missing root Current work card");
   assert.match(card, /current-work-region current-work-summary/);
-  assert.match(card, /current-work-body/);
+  assert.match(card, /className="current-work-copy"/);
+  assert.ok(card.indexOf('className="current-work-copy"') < card.indexOf("<LiveStep"));
+  assert.ok(card.indexOf("<LiveStep") < card.indexOf('className="work-state"'));
+  assert.doesNotMatch(card, /current-work-body/);
   assert.match(card, /current-work-region current-work-messages/);
   assert.match(
     declarations(".current-work-card"),
@@ -114,7 +117,12 @@ test("루트 Current work와 Recent messages는 40/60 비율을 유지하고 각
   );
   assert.match(declarations(".current-work-region"), /min-height: 0/);
   assert.match(declarations(".current-work-region"), /overflow: hidden/);
-  assert.match(declarations(".current-work-body"), /overflow-y: auto/);
+  const copy = declarations(".current-work-copy");
+  assert.match(copy, /min-height: 0/);
+  assert.match(copy, /flex: 1/);
+  assert.match(copy, /overflow-x: hidden/);
+  assert.match(copy, /overflow-y: auto/);
+  assert.match(copy, /overflow-wrap: anywhere/);
   assert.match(
     declarations(".current-work-messages .current-work-section-header"),
     /margin-top: 0/,

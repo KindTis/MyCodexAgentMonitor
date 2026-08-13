@@ -1037,17 +1037,15 @@ export function SessionDetail({
                 <span><Pulse size={16} /> Current work</span>
                 <code>{session.currentWork?.turnId ?? "No active turn"}</code>
               </header>
-              <div className="current-work-body">
-                {session.currentWork ? (
-                  <h3>{session.currentWork.title || "No current work"}</h3>
-                ) : (
-                  <p className="empty-copy">No active Turn was observed.</p>
-                )}
-                <LiveStep session={session} clock={clock} collectedAt={collectedAt} />
-                <div className="work-state">
-                  <StatusBadge status={session.status} statusBasis={session.statusBasis} />
-                  <small>{session.currentActivity?.label ?? "No active tool"}</small>
-                </div>
+              {session.currentWork ? (
+                <h3 className="current-work-copy">{session.currentWork.title || "No current work"}</h3>
+              ) : (
+                <p className="empty-copy current-work-copy">No active Turn was observed.</p>
+              )}
+              <LiveStep session={session} clock={clock} collectedAt={collectedAt} />
+              <div className="work-state">
+                <StatusBadge status={session.status} statusBasis={session.statusBasis} />
+                <small>{session.currentActivity?.label ?? "No active tool"}</small>
               </div>
             </section>
             <section className="current-work-region current-work-messages">
