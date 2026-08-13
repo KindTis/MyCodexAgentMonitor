@@ -1032,25 +1032,31 @@ export function SessionDetail({
       <div className="detail-grid">
         <div className="detail-column detail-column--work">
           <article className="detail-card current-work-card">
-            <header className="card-header">
-              <span><Pulse size={16} /> Current work</span>
-              <code>{session.currentWork?.turnId ?? "No active turn"}</code>
-            </header>
-            {session.currentWork ? (
-              <h3>{session.currentWork.title || "No current work"}</h3>
-            ) : (
-              <p className="empty-copy">No active Turn was observed.</p>
-            )}
-            <LiveStep session={session} clock={clock} collectedAt={collectedAt} />
-            <div className="work-state">
-              <StatusBadge status={session.status} statusBasis={session.statusBasis} />
-              <small>{session.currentActivity?.label ?? "No active tool"}</small>
-            </div>
-            <RecentMessages
-              ownerId={session.id}
-              messages={session.messages}
-              changedMessageIds={changes.messageIds}
-            />
+            <section className="current-work-region current-work-summary">
+              <header className="card-header">
+                <span><Pulse size={16} /> Current work</span>
+                <code>{session.currentWork?.turnId ?? "No active turn"}</code>
+              </header>
+              <div className="current-work-body">
+                {session.currentWork ? (
+                  <h3>{session.currentWork.title || "No current work"}</h3>
+                ) : (
+                  <p className="empty-copy">No active Turn was observed.</p>
+                )}
+                <LiveStep session={session} clock={clock} collectedAt={collectedAt} />
+                <div className="work-state">
+                  <StatusBadge status={session.status} statusBasis={session.statusBasis} />
+                  <small>{session.currentActivity?.label ?? "No active tool"}</small>
+                </div>
+              </div>
+            </section>
+            <section className="current-work-region current-work-messages">
+              <RecentMessages
+                ownerId={session.id}
+                messages={session.messages}
+                changedMessageIds={changes.messageIds}
+              />
+            </section>
           </article>
         </div>
 

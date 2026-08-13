@@ -1287,6 +1287,21 @@ time,
 
 .current-work-card {
   --detail-accent: var(--blue);
+  display: grid;
+  grid-template-rows: minmax(0, 2fr) minmax(0, 3fr);
+}
+
+.current-work-region {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.current-work-body {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .activity-card,
@@ -1927,6 +1942,10 @@ time,
   margin-top: 18px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
+}
+
+.current-work-messages .current-work-section-header {
+  margin-top: 0;
 }
 
 .message-list .message-item {

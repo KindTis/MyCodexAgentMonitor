@@ -95,6 +95,32 @@ test("데스크톱 상세 열과 각 열의 행 비율이 정확하다", () => {
   );
 });
 
+test("루트 Current work와 Recent messages는 40/60 비율을 유지하고 각자 내부 스크롤한다", () => {
+  const detail = app.slice(
+    app.indexOf("function SessionDetail"),
+    app.indexOf("export function App"),
+  );
+  const cardStart = detail.indexOf('className="detail-card current-work-card"');
+  const cardEnd = detail.indexOf("</article>", cardStart);
+  const card = detail.slice(cardStart, cardEnd);
+
+  assert.ok(cardStart >= 0, "missing root Current work card");
+  assert.match(card, /current-work-region current-work-summary/);
+  assert.match(card, /current-work-body/);
+  assert.match(card, /current-work-region current-work-messages/);
+  assert.match(
+    declarations(".current-work-card"),
+    /grid-template-rows: minmax\(0, 2fr\) minmax\(0, 3fr\)/,
+  );
+  assert.match(declarations(".current-work-region"), /min-height: 0/);
+  assert.match(declarations(".current-work-region"), /overflow: hidden/);
+  assert.match(declarations(".current-work-body"), /overflow-y: auto/);
+  assert.match(
+    declarations(".current-work-messages .current-work-section-header"),
+    /margin-top: 0/,
+  );
+});
+
 test("루트 Goal은 카드 크기를 유지하고 본문만 내부 스크롤한다", () => {
   const detail = app.slice(
     app.indexOf("function SessionDetail"),
