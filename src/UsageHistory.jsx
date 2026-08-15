@@ -300,12 +300,36 @@ function Chart({ daily, selectedDate, onSelectDate }) {
               <text className="usage-tooltip-title" x={tooltip.x + 10} y={tooltip.y + 16}>
                 {dateLabel(point.date)}
               </text>
-              <text className="usage-tooltip-cost" x={tooltip.x + 10} y={tooltip.y + 31}>
-                {`Cost ${formatCostUsd(point.costUsd)}`}
-              </text>
-              <text className="usage-tooltip-tokens" x={tooltip.x + 10} y={tooltip.y + 44}>
-                {`Tokens ${formatTokenCount(point.totalTokens)}`}
-              </text>
+              {selectedPoint ? (
+                <AnimatedUsageValue
+                  as="text"
+                  animateOnMount
+                  value={point.costUsd}
+                  format={(value) => `Cost ${formatCostUsd(value)}`}
+                  className="usage-tooltip-cost"
+                  x={tooltip.x + 10}
+                  y={tooltip.y + 31}
+                />
+              ) : (
+                <text className="usage-tooltip-cost" x={tooltip.x + 10} y={tooltip.y + 31}>
+                  {`Cost ${formatCostUsd(point.costUsd)}`}
+                </text>
+              )}
+              {selectedPoint ? (
+                <AnimatedUsageValue
+                  as="text"
+                  animateOnMount
+                  value={point.totalTokens}
+                  format={(value) => `Tokens ${formatTokenCount(value)}`}
+                  className="usage-tooltip-tokens"
+                  x={tooltip.x + 10}
+                  y={tooltip.y + 44}
+                />
+              ) : (
+                <text className="usage-tooltip-tokens" x={tooltip.x + 10} y={tooltip.y + 44}>
+                  {`Tokens ${formatTokenCount(point.totalTokens)}`}
+                </text>
+              )}
             </g>
           </g>
         );
@@ -455,6 +479,7 @@ export function UsageHistoryPanel({
             <span>{selected ? (
               <>
                 <AnimatedUsageValue
+                  animateOnMount
                   value={selected.totalTokens}
                   format={formatTokenCount}
                   className="usage-summary-value"
@@ -476,8 +501,22 @@ export function UsageHistoryPanel({
               <span className="usage-session-meter" style={{
                 "--usage-ratio": `${topTokens ? (session.totalTokens / topTokens) * 100 : 0}%`,
               }}><i /></span>
-              <code>{formatTokenCount(session.totalTokens)}</code>
-              <em>{formatCostUsd(session.costUsd)}</em>
+              <code>
+                <AnimatedUsageValue
+                  animateOnMount
+                  value={session.totalTokens}
+                  format={formatTokenCount}
+                  className="usage-session-value"
+                />
+              </code>
+              <em>
+                <AnimatedUsageValue
+                  animateOnMount
+                  value={session.costUsd}
+                  format={formatCostUsd}
+                  className="usage-session-value"
+                />
+              </em>
             </div>
           ))}
           {visibleData && !sessions.length && (

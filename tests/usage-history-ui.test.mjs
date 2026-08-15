@@ -107,6 +107,19 @@ test("선택하지 않은 날짜도 hover와 focus용 Cost·Tokens 툴팁을 가
   );
 });
 
+test("선택 툴팁만 Cost·Tokens 카운트를 사용하고 hover 미리보기는 즉시 표시한다", () => {
+  const markup = renderHistory();
+
+  assert.match(
+    markup,
+    /usage-chart-tooltip usage-chart-tooltip--selected[\s\S]*?usage-tooltip-cost usage-tooltip-cost--updated[\s\S]*?Cost \$0\.0000[\s\S]*?usage-tooltip-tokens usage-tooltip-tokens--updated[\s\S]*?Tokens 0/,
+  );
+  assert.match(
+    markup,
+    /class="usage-chart-tooltip" aria-hidden="true"><rect[^>]*><\/rect><text[^>]*>Aug 10<\/text><text class="usage-tooltip-cost"[^>]*>Cost \$0\.7000<\/text><text class="usage-tooltip-tokens"[^>]*>Tokens 200<\/text>/,
+  );
+});
+
 test("툴팁은 포인터를 따라가고 차트 우하단에서는 안쪽으로 배치된다", () => {
   assert.equal(typeof getUsageTooltipPosition, "function");
   assert.deepEqual(getUsageTooltipPosition(300, 100), { x: 312, y: 112 });
@@ -170,6 +183,15 @@ test("선택일 세션은 Token 사용량순과 상대 막대로 표시한다", 
   assert.match(markup, /1,420/);
   assert.match(markup, /\$2\.7300/);
   assert.match(markup, /style="--usage-ratio:100%"/);
+});
+
+test("새로 표시된 세션의 Tokens·Cost는 0부터 카운트하며 하이라이트한다", () => {
+  const markup = renderHistory();
+
+  assert.equal([...markup.matchAll(/class="usage-session-value usage-session-value--updated"/g)].length, 4);
+  assert.match(markup, /<code><span class="usage-session-value usage-session-value--updated" aria-label="1,420">0<\/span><\/code>/);
+  assert.match(markup, /<em><span class="usage-session-value usage-session-value--updated" aria-label="\$2\.7300">\$0\.0000<\/span><\/em>/);
+  assert.match(css, /\.usage-session-value--updated\s*\{[^}]*animation:\s*value-flash 1500ms ease-out 1/s);
 });
 
 test("히스토리 패널은 로딩·오류·빈 세션 상태를 같은 영역에서 표시한다", () => {

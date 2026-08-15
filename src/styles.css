@@ -304,6 +304,14 @@ time,
   animation: value-flash 1500ms ease-out 1;
 }
 
+.usage-session-value {
+  display: inline-block;
+}
+
+.usage-session-value--updated {
+  animation: value-flash 1500ms ease-out 1;
+}
+
 .live-dot,
 .feed-state i {
   display: inline-block;
@@ -752,6 +760,11 @@ time,
 
 .usage-tooltip-tokens {
   fill: var(--cyan);
+}
+
+.usage-tooltip-cost--updated,
+.usage-tooltip-tokens--updated {
+  animation: usage-svg-value-flash 1500ms ease-out 1;
 }
 
 .usage-history-state {
@@ -2677,6 +2690,12 @@ time,
   }
 }
 
+@keyframes usage-svg-value-flash {
+  0% {
+    fill: #f4f6ff;
+  }
+}
+
 @keyframes agent-ring {
   50% {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-color) 14%, transparent);
@@ -2727,6 +2746,9 @@ time,
   .value-updated,
   .system-summary-value--updated,
   .usage-summary-value--updated,
+  .usage-session-value--updated,
+  .usage-tooltip-cost--updated,
+  .usage-tooltip-tokens--updated,
   .agent-mark--active,
   .agent-mark--handoff,
   .live-step--active svg,

@@ -31,14 +31,25 @@ export function animateUsageValue({
 }
 
 export function AnimatedUsageValue({
+  as: Element = "span",
+  animateOnMount = false,
   value,
   format,
   className = "system-summary-value",
+  ...elementProps
 }) {
-  const [displayedValue, setDisplayedValue] = useState(value);
-  const displayedValueRef = useRef(value);
-  const targetRef = useRef(value);
-  const [highlightKey, setHighlightKey] = useState(0);
+  const animateInitially = (
+    animateOnMount
+    && Number.isFinite(value)
+    && value > 0
+    && !(typeof window !== "undefined"
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+  );
+  const initialValue = animateInitially ? 0 : value;
+  const [displayedValue, setDisplayedValue] = useState(initialValue);
+  const displayedValueRef = useRef(initialValue);
+  const targetRef = useRef(initialValue);
+  const [highlightKey, setHighlightKey] = useState(animateInitially ? 1 : 0);
 
   useEffect(() => {
     if (Object.is(targetRef.current, value)) return undefined;
@@ -60,12 +71,13 @@ export function AnimatedUsageValue({
   }, [value]);
 
   return (
-    <span
+    <Element
       key={highlightKey}
+      {...elementProps}
       className={highlightKey ? `${className} ${className}--updated` : className}
       aria-label={format(value)}
     >
       {format(displayedValue)}
-    </span>
+    </Element>
   );
 }

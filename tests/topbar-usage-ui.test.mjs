@@ -15,6 +15,7 @@ const {
   formatResetCountdown,
   SystemSummary,
 } = await server.ssrLoadModule("/src/App.jsx");
+const { AnimatedUsageValue } = await server.ssrLoadModule("/src/AnimatedUsageValue.jsx");
 const css = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
 
 test.after(async () => {
@@ -187,6 +188,24 @@ test("상단 Token과 Cost는 초기 하이라이트 없이 전환 요소로 렌
     2,
   );
   assert.doesNotMatch(markup, /system-summary-value--updated/);
+});
+
+test("공용 사용량 값은 SVG text와 최초 0→값 애니메이션을 지원한다", () => {
+  const markup = renderToStaticMarkup(createElement(AnimatedUsageValue, {
+    as: "text",
+    animateOnMount: true,
+    value: 42,
+    format: (value) => `Tokens ${value}`,
+    className: "usage-tooltip-tokens",
+    x: 10,
+    y: 20,
+  }));
+
+  assert.match(markup, /^<text /);
+  assert.match(markup, /x="10" y="20"/);
+  assert.match(markup, /class="usage-tooltip-tokens usage-tooltip-tokens--updated"/);
+  assert.match(markup, /aria-label="Tokens 42"/);
+  assert.match(markup, />Tokens 0<\/text>$/);
 });
 
 test("상단 Token과 Cost 영역 전체가 사용량 히스토리 진입 버튼이다", () => {
