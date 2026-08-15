@@ -283,23 +283,6 @@ export function reduceThreadRecords(previous, records, thread, nowMs = Date.now(
         });
       }
     }
-    if (
-      thread.parentThreadId != null
-      && record.type === "response_item"
-      && (payload.type === "function_call" || payload.type === "custom_tool_call")
-      && String(payload.name ?? payload.tool_name ?? "").split(".").at(-1) === "send_message"
-    ) {
-      const input = parseArguments(payload.arguments ?? payload.input);
-      const text = typeof input.message === "string" ? input.message.trim() : "";
-      if (text) {
-        observation.messages.push({
-          id: payload.id ?? payload.call_id ?? `message-${record.timestamp}`,
-          at: toIso(record.timestamp),
-          text,
-        });
-      }
-    }
-
     if (record.type === "event_msg" && payload.type === "task_started") {
       activeTurnId = payload.turn_id ?? targetTurnId;
       if (activeTurnId !== targetTurnId) continue;
