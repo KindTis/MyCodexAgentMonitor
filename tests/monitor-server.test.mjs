@@ -58,6 +58,19 @@ async function startTestServer(t, snapshot) {
   return { server, url: `http://${HOST}:${port}` };
 }
 
+async function startHistoryTestServer(t, usageHistoryProvider) {
+  const distDir = await createStaticFixture(t);
+  const server = createMonitorServer({
+    distDir,
+    snapshotProvider: () => snapshot(),
+    usageHistoryProvider,
+  });
+  await listen(server, { host: HOST, port: 0 });
+  t.after(() => closeServer(server));
+  const { port } = server.address();
+  return `http://${HOST}:${port}`;
+}
+
 function createTimerHarness() {
   let nextId = 1;
   const timers = new Map();
@@ -188,6 +201,48 @@ test("snapshot API와 정적 파일·HTML fallback을 안전하게 제공한다"
   assert.equal(response.status, 404);
   response = await fetch(`${running.url}/%2e%2e%5csecret.txt`);
   assert.equal(response.status, 403);
+});
+
+test("사용량 히스토리 API는 정규화된 기간과 선택일을 provider에 전달한다", async (t) => {
+  let received;
+  const url = await startHistoryTestServer(t, async (request) => {
+    received = request;
+    return {
+      ...request,
+      daily: [{ date: "2026-08-12", totalTokens: 30, costUsd: 0.75 }],
+      sessions: [],
+    };
+  });
+
+  const response = await fetch(
+    `${url}/api/usage-history?days=7&end=2026-08-15&selected=2026-08-12`,
+  );
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(received, {
+    days: 7,
+    startDate: "2026-08-09",
+    endDate: "2026-08-15",
+    selectedDate: "2026-08-12",
+  });
+  assert.equal((await response.json()).daily[0].totalTokens, 30);
+});
+
+test("사용량 히스토리 API는 잘못된 요청과 수집 실패를 구분한다", async (t) => {
+  const badRequestUrl = await startHistoryTestServer(t, async () => ({}));
+  let response = await fetch(`${badRequestUrl}/api/usage-history?days=14`);
+  assert.equal(response.status, 400);
+
+  const failureUrl = await startHistoryTestServer(t, async () => {
+    throw new Error("ccusage unavailable");
+  });
+  response = await fetch(
+    `${failureUrl}/api/usage-history?days=7&end=2026-08-15&selected=2026-08-12`,
+  );
+  assert.equal(response.status, 503);
+
+  response = await fetch(`${failureUrl}/api/usage-history`, { method: "POST" });
+  assert.equal(response.status, 405);
 });
 
 test("점유된 4310 포트에서 App Server나 브라우저를 시작하지 않는다", async (t) => {

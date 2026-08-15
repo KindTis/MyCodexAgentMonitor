@@ -1,18 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createServer } from "vite";
 
 const server = await createServer({
   appType: "custom",
-  server: { middlewareMode: true },
+  optimizeDeps: { noDiscovery: true },
+  server: { hmr: false, middlewareMode: true },
 });
 const {
   animateUsageValue,
   formatResetCountdown,
   SystemSummary,
 } = await server.ssrLoadModule("/src/App.jsx");
+const css = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
 
 test.after(async () => {
   await server.close();
@@ -184,4 +187,40 @@ test("상단 Token과 Cost는 초기 하이라이트 없이 전환 요소로 렌
     2,
   );
   assert.doesNotMatch(markup, /system-summary-value--updated/);
+});
+
+test("상단 Token과 Cost 영역 전체가 사용량 히스토리 진입 버튼이다", () => {
+  const markup = renderToStaticMarkup(createElement(SystemSummary, {
+    ...props,
+    onOpenUsage() {},
+    usage: {
+      todayTokens: 100,
+      todayCostUsd: 1,
+      fiveHourUsedPercent: 21,
+      oneWeekUsedPercent: 6,
+    },
+  }));
+
+  assert.match(
+    markup,
+    /<button type="button" class="summary-usage-button" aria-label="Open usage history">/,
+  );
+  assert.equal([...markup.matchAll(/class="summary-stat-label"/g)].length, 2);
+  assert.match(markup, /summary-stat-label">Tokens/);
+  assert.match(markup, /summary-stat-label">Cost/);
+});
+
+test("사용량 진입은 hover와 focus에서 버튼 전체 표면을 강조하고 밑줄을 사용하지 않는다", () => {
+  assert.match(
+    css,
+    /\.summary-usage-button:hover,\s*\.summary-usage-button:focus-visible\s*\{[^}]*border-color:\s*var\(--line-strong\)[^}]*background:\s*var\(--panel-raised\)/s,
+  );
+  assert.doesNotMatch(
+    css,
+    /\.summary-usage-button:(?:hover|focus-visible)[^}]*\.summary-stat-label[^{]*\{/s,
+  );
+  assert.match(
+    css,
+    /\.summary-usage-button\s*\{[^}]*cursor: pointer/s,
+  );
 });

@@ -4,9 +4,13 @@ import { fileURLToPath } from "node:url";
 
 import {
   collectUsage,
+  parseCcusageHistoryDaily,
+  parseCcusageHistorySessions,
   parseCcusageDaily,
   parseCodexRateLimits,
+  parseUsageHistoryRequest,
   readCcusageDaily,
+  readUsageHistory,
   USAGE_COLLECTION_INTERVAL_MS,
 } from "../monitor/usage.mjs";
 
@@ -244,4 +248,143 @@ test("두 사용량 원천은 독립 실패하고 이전 값을 보존하지 않
     oneWeekResetsAt: null,
   });
   assert.equal(USAGE_COLLECTION_INTERVAL_MS, 10000);
+});
+
+test("7D와 30D 히스토리 요청만 KST 날짜 범위로 정규화한다", () => {
+  assert.deepEqual(
+    parseUsageHistoryRequest({
+      days: "7",
+      end: "2026-08-15",
+      selected: "2026-08-12",
+    }),
+    {
+      days: 7,
+      startDate: "2026-08-09",
+      endDate: "2026-08-15",
+      selectedDate: "2026-08-12",
+    },
+  );
+  assert.deepEqual(
+    parseUsageHistoryRequest({}, new Date("2026-08-15T01:00:00.000Z")),
+    {
+      days: 30,
+      startDate: "2026-07-17",
+      endDate: "2026-08-15",
+      selectedDate: "2026-08-15",
+    },
+  );
+
+  assert.throws(() => parseUsageHistoryRequest({ days: "14" }), /days/);
+  assert.throws(
+    () => parseUsageHistoryRequest({ days: "7", end: "2026-02-30" }),
+    /end/,
+  );
+  assert.throws(
+    () => parseUsageHistoryRequest({
+      days: "7",
+      end: "2026-08-15",
+      selected: "2026-08-08",
+    }),
+    /selected/,
+  );
+});
+
+test("일별 히스토리는 누락 날짜를 0으로 채우고 두 비용 필드를 지원한다", () => {
+  const request = parseUsageHistoryRequest({ days: "7", end: "2026-08-15" });
+  assert.deepEqual(
+    parseCcusageHistoryDaily({
+      daily: [
+        { date: "2026-08-09", totalTokens: 10, costUSD: 0.25 },
+        { date: "2026-08-12", totalTokens: 30, totalCost: 0.75 },
+        { date: "2026-08-15", totalTokens: 20, costUSD: 0.5 },
+      ],
+    }, request),
+    [
+      { date: "2026-08-09", totalTokens: 10, costUsd: 0.25 },
+      { date: "2026-08-10", totalTokens: 0, costUsd: 0 },
+      { date: "2026-08-11", totalTokens: 0, costUsd: 0 },
+      { date: "2026-08-12", totalTokens: 30, costUsd: 0.75 },
+      { date: "2026-08-13", totalTokens: 0, costUsd: 0 },
+      { date: "2026-08-14", totalTokens: 0, costUsd: 0 },
+      { date: "2026-08-15", totalTokens: 20, costUsd: 0.5 },
+    ],
+  );
+});
+
+test("선택일 세션은 프로젝트·세션명을 결합해 Token 내림차순으로 정렬한다", () => {
+  const metadata = new Map([
+    ["root-a", { cwd: "C:\\Repos\\ProjectGR", sessionName: "Card combat polish" }],
+    ["root-b", { cwd: "C:\\Repos\\MyCodexAgentMonitor", sessionName: "Usage history" }],
+  ]);
+
+  assert.deepEqual(
+    parseCcusageHistorySessions({
+      sessions: [
+        {
+          sessionId: "2026/08/15/rollout-root-b",
+          totalTokens: 200,
+          costUSD: 0.5,
+        },
+        {
+          sessionId: "2026/08/15/rollout-root-a",
+          totalTokens: 1420,
+          costUSD: 2.73,
+        },
+      ],
+    }, metadata),
+    [
+      {
+        sessionId: "root-a",
+        projectName: "ProjectGR",
+        sessionName: "Card combat polish",
+        totalTokens: 1420,
+        costUsd: 2.73,
+      },
+      {
+        sessionId: "root-b",
+        projectName: "MyCodexAgentMonitor",
+        sessionName: "Usage history",
+        totalTokens: 200,
+        costUsd: 0.5,
+      },
+    ],
+  );
+});
+
+test("히스토리는 기간 일별과 선택일 세션을 KST 고정 인자로 함께 조회한다", async () => {
+  const calls = [];
+  const result = await readUsageHistory({
+    days: "7",
+    end: "2026-08-15",
+    selected: "2026-08-12",
+  }, {
+    run: async (command, args, options) => {
+      calls.push({ command, args, options });
+      return args[2] === "daily"
+        ? { stdout: JSON.stringify({ daily: [
+          { date: "2026-08-12", totalTokens: 30, costUSD: 0.75 },
+        ] }) }
+        : { stdout: JSON.stringify({ sessions: [
+          { sessionId: "2026/08/12/rollout-root-a", totalTokens: 30, costUSD: 0.75 },
+        ] }) };
+    },
+    loadSessionMetadata: async () => new Map([
+      ["root-a", { cwd: "C:\\Repos\\ProjectGR", sessionName: "Card combat polish" }],
+    ]),
+  });
+
+  assert.equal(result.daily.length, 7);
+  assert.equal(result.sessions[0].sessionName, "Card combat polish");
+  assert.deepEqual(calls.map(({ args }) => args.slice(1)), [
+    [
+      "codex", "daily", "--json", "--offline", "--timezone", "Asia/Seoul",
+      "--since", "2026-08-09", "--until", "2026-08-15",
+    ],
+    [
+      "codex", "session", "--json", "--offline", "--timezone", "Asia/Seoul",
+      "--since", "2026-08-12", "--until", "2026-08-12",
+    ],
+  ]);
+  assert.ok(calls.every(({ command }) => command === process.execPath));
+  assert.ok(calls.every(({ options }) => options.windowsHide === true));
 });

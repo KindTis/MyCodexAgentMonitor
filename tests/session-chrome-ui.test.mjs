@@ -138,6 +138,9 @@ test("상세 헤더는 세션명 아래에 현재 브랜치명과 모델명을 �
   );
   assert.doesNotMatch(heading, /Selected session/);
   assert.doesNotMatch(heading, /<h2>Codex /);
+  assert.ok(
+    heading.indexOf("Open in Codex") < heading.indexOf('aria-label="Close session details"'),
+  );
   assert.match(markup, /Plan Tasks<\/span>/);
 });
 

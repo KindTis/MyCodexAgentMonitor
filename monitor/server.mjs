@@ -13,6 +13,8 @@ import {
 import {
   collectUsage,
   EMPTY_USAGE,
+  parseUsageHistoryRequest,
+  readUsageHistory,
   USAGE_COLLECTION_INTERVAL_MS,
 } from "./usage.mjs";
 
@@ -35,12 +37,18 @@ const EMPTY_SNAPSHOT = {
   sessions: [],
 };
 
-export function createMonitorServer({ distDir, snapshotProvider }) {
+export function createMonitorServer({
+  distDir,
+  snapshotProvider,
+  usageHistoryProvider = readUsageHistory,
+}) {
   const root = path.resolve(distDir);
   return http.createServer(async (request, response) => {
+    let requestUrl;
     let pathname;
     try {
-      pathname = decodeURIComponent(new URL(request.url, `http://${HOST}`).pathname);
+      requestUrl = new URL(request.url, `http://${HOST}`);
+      pathname = decodeURIComponent(requestUrl.pathname);
     } catch {
       return sendText(response, 400, "Bad request");
     }
@@ -56,6 +64,28 @@ export function createMonitorServer({ distDir, snapshotProvider }) {
         "content-type": "application/json; charset=utf-8",
       });
       return response.end(body);
+    }
+    if (pathname === "/api/usage-history") {
+      if (request.method !== "GET") {
+        response.setHeader("allow", "GET");
+        return sendText(response, 405, "Method not allowed");
+      }
+      let historyRequest;
+      try {
+        historyRequest = parseUsageHistoryRequest({
+          days: requestUrl.searchParams.get("days") ?? undefined,
+          end: requestUrl.searchParams.get("end") ?? undefined,
+          selected: requestUrl.searchParams.get("selected") ?? undefined,
+        });
+      } catch {
+        return sendText(response, 400, "Invalid usage history request");
+      }
+      try {
+        const body = await usageHistoryProvider(historyRequest);
+        return sendJson(response, 200, body);
+      } catch {
+        return sendText(response, 503, "Usage history unavailable");
+      }
     }
     if (pathname.startsWith("/api/")) return sendText(response, 404, "Not found");
     if (request.method !== "GET") return sendText(response, 405, "Method not allowed");
@@ -248,6 +278,14 @@ function sendFile(response, filePath, body) {
 function sendText(response, status, body) {
   response.writeHead(status, { "content-type": "text/plain; charset=utf-8" });
   response.end(body);
+}
+
+function sendJson(response, status, value) {
+  response.writeHead(status, {
+    "cache-control": "no-store",
+    "content-type": "application/json; charset=utf-8",
+  });
+  response.end(JSON.stringify(value));
 }
 
 async function runCli() {

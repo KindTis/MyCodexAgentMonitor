@@ -44,6 +44,7 @@ import {
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 
+import { AnimatedUsageValue } from "./AnimatedUsageValue.jsx";
 import {
   formatCostUsd,
   formatDuration,
@@ -64,6 +65,9 @@ import {
   normalizeStatus,
   sortSessions,
 } from "./agent-model.js";
+import { UsageHistory } from "./UsageHistory.jsx";
+
+export { animateUsageValue } from "./AnimatedUsageValue.jsx";
 
 const statusMeta = {
   running: { label: "Running", icon: CircleNotch },
@@ -1014,6 +1018,10 @@ export function SessionDetail({
           <StatusBadge status={session.status} statusBasis={session.statusBasis} />
           <span>{formatDuration(duration)} session</span>
           <span>Last update {relativeTime || "unavailable"}</span>
+          <button type="button" onClick={onOpenCodex}>
+            <ArrowSquareOut size={14} />
+            Open in Codex
+          </button>
           <button
             type="button"
             className="detail-close"
@@ -1021,10 +1029,6 @@ export function SessionDetail({
             onClick={onClose}
           >
             <X size={14} />
-          </button>
-          <button type="button" onClick={onOpenCodex}>
-            <ArrowSquareOut size={14} />
-            Open in Codex
           </button>
         </div>
       </header>
@@ -1170,35 +1174,6 @@ export function SessionDetail({
   );
 }
 
-export function animateUsageValue({
-  from,
-  to,
-  reduceMotion = false,
-  onUpdate,
-}) {
-  const canAnimate = (
-    Number.isFinite(from)
-    && from >= 0
-    && Number.isFinite(to)
-    && to >= 0
-    && !reduceMotion
-  );
-
-  if (!canAnimate) {
-    onUpdate(to);
-    return null;
-  }
-
-  const frame = { value: from };
-  return gsap.to(frame, {
-    value: to,
-    duration: 1.5,
-    ease: "power2.out",
-    onUpdate: () => onUpdate(frame.value),
-    onComplete: () => onUpdate(to),
-  });
-}
-
 export function formatResetCountdown(resetsAt, now) {
   if (!Number.isFinite(resetsAt) || resetsAt < 0) return "-";
   const totalMinutes = Math.max(0, Math.floor((resetsAt * 1000 - now) / 60000));
@@ -1210,44 +1185,6 @@ export function formatResetCountdown(resetsAt, now) {
     .join(":");
 }
 
-function AnimatedUsageValue({ value, format }) {
-  const [displayedValue, setDisplayedValue] = useState(value);
-  const displayedValueRef = useRef(value);
-  const targetRef = useRef(value);
-  const [highlightKey, setHighlightKey] = useState(0);
-
-  useEffect(() => {
-    if (Object.is(targetRef.current, value)) return undefined;
-
-    targetRef.current = value;
-    setHighlightKey((key) => key + 1);
-
-    const tween = animateUsageValue({
-      from: displayedValueRef.current,
-      to: value,
-      reduceMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-      onUpdate: (nextValue) => {
-        displayedValueRef.current = nextValue;
-        setDisplayedValue(nextValue);
-      },
-    });
-
-    return tween ? () => tween.kill() : undefined;
-  }, [value]);
-
-  return (
-    <span
-      key={highlightKey}
-      className={highlightKey
-        ? "system-summary-value system-summary-value--updated"
-        : "system-summary-value"}
-      aria-label={format(value)}
-    >
-      {format(displayedValue)}
-    </span>
-  );
-}
-
 export function SystemSummary({
   runningCount,
   waitingCount,
@@ -1255,6 +1192,9 @@ export function SystemSummary({
   usage,
   wallClock,
   isLive,
+  isUsageOpen = false,
+  onOpenUsage,
+  usageButtonRef,
 }) {
   return (
     <div className="system-summary">
@@ -1271,21 +1211,31 @@ export function SystemSummary({
         {sessionCount} sessions
       </span>
       <span className="summary-group summary-group--daily">
-        | <span className="summary-stat summary-stat--tokens">
-          Tokens{" "}
-          <AnimatedUsageValue
-            value={usage?.todayTokens}
-            format={formatTokenCount}
-          />
-        </span>
-        {" · "}
-        <span className="summary-stat summary-stat--cost">
-          Cost{" "}
-          <AnimatedUsageValue
-            value={usage?.todayCostUsd}
-            format={formatCostUsd}
-          />
-        </span>
+        |{" "}
+        <button
+          type="button"
+          className="summary-usage-button"
+          aria-label="Open usage history"
+          aria-current={isUsageOpen ? "page" : undefined}
+          onClick={onOpenUsage}
+          ref={usageButtonRef}
+        >
+          <span className="summary-stat summary-stat--tokens">
+            <span className="summary-stat-label">Tokens</span>{" "}
+            <AnimatedUsageValue
+              value={usage?.todayTokens}
+              format={formatTokenCount}
+            />
+          </span>
+          {" · "}
+          <span className="summary-stat summary-stat--cost">
+            <span className="summary-stat-label">Cost</span>{" "}
+            <AnimatedUsageValue
+              value={usage?.todayCostUsd}
+              format={formatCostUsd}
+            />
+          </span>
+        </button>
       </span>
       <span
         className="summary-group summary-group--limits"
@@ -1335,6 +1285,7 @@ export function App() {
   const [selectionNotice, setSelectionNotice] = useState("");
   const [sortState, setSortState] = useState({ key: "operational", direction: "asc" });
   const [isLive, setIsLive] = useState(true);
+  const [view, setView] = useState("monitor");
   const [clock, setClock] = useState(Date.now());
   const [wallClock, setWallClock] = useState(Date.now());
   const latestSnapshot = useRef(EMPTY_SNAPSHOT);
@@ -1345,6 +1296,7 @@ export function App() {
   const selectedSessionIdRef = useRef(null);
   const selectionOrigin = useRef(null);
   const pendingFocus = useRef(null);
+  const usageButtonRef = useRef(null);
 
   const commitSessionSelection = useCallback((id) => {
     selectedSessionIdRef.current = id;
@@ -1595,6 +1547,9 @@ export function App() {
           usage={snapshot.usage}
           wallClock={wallClock}
           isLive={isLive}
+          isUsageOpen={view === "usage"}
+          onOpenUsage={() => setView("usage")}
+          usageButtonRef={usageButtonRef}
         />
       </header>
 
@@ -1699,7 +1654,12 @@ export function App() {
           </div>
         </section>
 
-        {selectedSession ? (
+        {view === "usage" ? (
+          <UsageHistory usage={snapshot.usage} onClose={() => {
+            setView("monitor");
+            requestAnimationFrame(() => usageButtonRef.current?.focus());
+          }} />
+        ) : selectedSession ? (
           <SessionDetail
             session={selectedSession}
             selectedChildId={selectedChildId}
@@ -1733,7 +1693,9 @@ export function App() {
         <ConnectionState status={connectionStatus}>
           {feedAge || "waiting for first snapshot"}
         </ConnectionState>
-        <span>Session event time shown in local time</span>
+        <span>{view === "usage"
+          ? "Usage grouped in Asia/Seoul"
+          : "Session event time shown in local time"}</span>
       </footer>
 
       {selectionNotice && (

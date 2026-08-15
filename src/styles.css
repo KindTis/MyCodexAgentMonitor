@@ -181,6 +181,34 @@ time,
   color: var(--faint);
 }
 
+.summary-group--daily {
+  display: inline-flex;
+  align-items: center;
+}
+
+.summary-usage-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.summary-usage-button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.summary-usage-button:hover,
+.summary-usage-button:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--panel-raised);
+}
+
 .summary-stat--tokens {
   color: var(--cyan);
 }
@@ -268,6 +296,14 @@ time,
   animation: value-flash 1500ms ease-out 1;
 }
 
+.usage-summary-value {
+  display: inline-block;
+}
+
+.usage-summary-value--updated {
+  animation: value-flash 1500ms ease-out 1;
+}
+
 .live-dot,
 .feed-state i {
   display: inline-block;
@@ -312,6 +348,549 @@ time,
   width: calc(100% - 36px);
   margin: 0 auto;
   padding: 10px 0;
+}
+
+.usage-history-focus {
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  outline: 0;
+}
+
+.usage-history {
+  display: grid;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(250px, 3fr) minmax(150px, 2fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.usage-history-header,
+.usage-history-heading,
+.usage-history-actions,
+.usage-history-controls,
+.usage-range-group,
+.usage-chart-header,
+.usage-chart-header > span,
+.usage-chart-legend,
+.usage-chart-legend span,
+.usage-session-header,
+.usage-session-header > div,
+.usage-refreshing {
+  display: flex;
+  align-items: center;
+}
+
+.usage-history-header {
+  justify-content: space-between;
+}
+
+.usage-history-heading {
+  min-width: 0;
+  gap: 13px;
+}
+
+.usage-history-heading > div {
+  min-width: 0;
+}
+
+.usage-history-heading h2,
+.usage-history-heading p,
+.usage-session-header h2 {
+  margin: 0;
+}
+
+.usage-history-heading h2 {
+  font-size: clamp(19px, 1.6vw, 23px);
+  font-weight: 620;
+  letter-spacing: -0.02em;
+}
+
+.usage-history-heading p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.usage-range,
+.usage-period-button,
+.usage-period-label {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  background: var(--panel-raised);
+  font-size: 10px;
+}
+
+.usage-history-actions {
+  flex: 0 0 auto;
+  gap: 14px;
+}
+
+.usage-history-controls {
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.usage-range-group {
+  gap: 3px;
+}
+
+.usage-range {
+  min-width: 38px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.usage-range--active {
+  border-color: rgb(113 139 255 / 48%);
+  color: var(--blue);
+  background: rgb(113 139 255 / 10%);
+}
+
+.usage-period-button {
+  width: 29px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.usage-range:hover,
+.usage-period-button:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  color: var(--secondary);
+}
+
+.usage-period-button:disabled {
+  color: var(--faint);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.usage-period-label {
+  min-width: 138px;
+  padding: 6px 9px;
+  border-radius: 5px;
+  color: var(--secondary);
+  font-family: "Geist Mono Variable", monospace;
+}
+
+.usage-history-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+
+.usage-history-summary > div {
+  min-width: 0;
+  padding: 10px 14px;
+}
+
+.usage-history-summary > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.usage-history-summary > div > span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--faint);
+  font-size: 9px;
+}
+
+.usage-history-summary strong {
+  overflow: hidden;
+  display: block;
+  font: 13px/1.2 "Geist Mono Variable", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-summary-cost {
+  color: var(--amber);
+}
+
+.usage-summary-tokens {
+  color: var(--cyan);
+}
+
+.usage-chart-section,
+.usage-session-section {
+  display: grid;
+  min-height: 0;
+}
+
+.usage-chart-section {
+  grid-template-rows: auto minmax(0, 1fr);
+  border-bottom: 1px solid var(--line);
+}
+
+.usage-chart-header {
+  min-height: 38px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--secondary);
+  font-size: 11px;
+  font-weight: 590;
+}
+
+.usage-chart-header > span {
+  gap: 7px;
+}
+
+.usage-chart-header > span > i {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid rgb(56 189 248 / 34%);
+  border-radius: 5px;
+  color: var(--cyan);
+  background: rgb(56 189 248 / 8%);
+}
+
+.usage-chart-header b {
+  padding: 3px 6px;
+  border: 1px solid rgb(56 189 248 / 34%);
+  border-radius: 5px;
+  color: var(--cyan);
+  background: rgb(56 189 248 / 8%);
+  font: 9px/1 "Geist Mono Variable", monospace;
+}
+
+.usage-chart-legend {
+  gap: 12px;
+  color: var(--muted);
+  font: 9px/1 "Geist Mono Variable", monospace;
+}
+
+.usage-chart-legend span {
+  gap: 5px;
+}
+
+.usage-chart-legend i {
+  display: inline-block;
+  width: 13px;
+  height: 3px;
+}
+
+.usage-legend-cost {
+  background: var(--amber);
+}
+
+.usage-legend-tokens {
+  height: 8px !important;
+  background: var(--cyan);
+}
+
+.usage-chart-body {
+  display: grid;
+  min-height: 0;
+  place-items: stretch;
+  overflow: hidden;
+  background: #0c111b;
+}
+
+.usage-chart-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 250px;
+}
+
+.usage-grid-line {
+  stroke: #20293a;
+  stroke-width: 1;
+}
+
+.usage-axis-line {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.usage-axis-label,
+.usage-x-label,
+.usage-axis-title {
+  fill: var(--faint);
+  font-family: "Geist Mono Variable", monospace;
+}
+
+.usage-axis-label,
+.usage-axis-title {
+  font-size: 9px;
+}
+
+.usage-x-label {
+  font-size: 8px;
+}
+
+.usage-axis-title {
+  letter-spacing: 0.06em;
+}
+
+.usage-axis-title--cost {
+  fill: var(--amber);
+}
+
+.usage-axis-title--tokens {
+  fill: var(--cyan);
+}
+
+.usage-selected-lane {
+  fill: rgb(113 139 255 / 7%);
+}
+
+.usage-selected-line {
+  stroke: var(--blue);
+  stroke-width: 1;
+  stroke-dasharray: 4 5;
+}
+
+.usage-chart-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.usage-chart-day:focus-visible {
+  outline: none;
+}
+
+.usage-chart-day:focus-visible .usage-chart-hit {
+  fill: rgb(113 139 255 / 10%);
+  stroke: var(--blue);
+  stroke-width: 1;
+}
+
+.usage-token-bar {
+  fill: var(--cyan);
+  opacity: 0.48;
+  pointer-events: none;
+  transition: y 300ms ease-out, height 300ms ease-out;
+}
+
+.usage-token-bar--selected {
+  fill: #71d7ff;
+  opacity: 0.95;
+}
+
+.usage-token-core {
+  fill: var(--text);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.usage-cost-line {
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 3;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.usage-cost-node {
+  fill: #0c111b;
+  stroke: var(--amber);
+  stroke-width: 2;
+  pointer-events: none;
+  transition: cy 300ms ease-out;
+}
+
+.usage-cost-node--selected {
+  stroke-width: 2.5;
+}
+
+.usage-chart-tooltip {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.usage-chart-day--selected .usage-chart-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.usage-chart-svg:has(.usage-chart-day:hover, .usage-chart-day:focus-visible) .usage-chart-tooltip {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.usage-chart-svg .usage-chart-day:hover .usage-chart-tooltip,
+.usage-chart-svg .usage-chart-day:focus-visible .usage-chart-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.usage-chart-tooltip rect {
+  fill: var(--panel-raised);
+  stroke: var(--line-strong);
+}
+
+.usage-chart-tooltip text {
+  font-family: "Geist Mono Variable", monospace;
+  font-size: 9px;
+}
+
+.usage-tooltip-title {
+  fill: var(--text);
+  font-family: "Geist Variable", sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 600;
+}
+
+.usage-tooltip-cost {
+  fill: var(--amber);
+}
+
+.usage-tooltip-tokens {
+  fill: var(--cyan);
+}
+
+.usage-history-state {
+  display: flex;
+  place-self: center;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.usage-history-state svg,
+.usage-refreshing svg {
+  animation: spin 1.4s linear infinite;
+}
+
+.usage-history-state--error {
+  color: var(--coral);
+}
+
+.usage-session-section {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.usage-session-header {
+  min-height: 38px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.usage-session-header > div {
+  min-width: 0;
+  gap: 10px;
+}
+
+.usage-session-header h2 {
+  font-size: 11px;
+  font-weight: 590;
+}
+
+.usage-session-header span,
+.usage-refreshing {
+  color: var(--muted);
+  font: 9px/1 "Geist Mono Variable", monospace;
+}
+
+.usage-refreshing {
+  gap: 5px;
+}
+
+.usage-session-columns,
+.usage-session-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(180px, 1.35fr) minmax(120px, 1fr) 84px 74px;
+  align-items: center;
+  gap: 11px;
+}
+
+.usage-session-columns {
+  min-height: 28px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--faint);
+  background: var(--bg);
+  font: 9px/1 "Geist Mono Variable", monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.usage-session-columns span:nth-last-child(-n + 2) {
+  text-align: right;
+}
+
+.usage-session-list {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: thin;
+}
+
+.usage-session-row {
+  min-height: 39px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.usage-session-row:last-child {
+  border-bottom: 0;
+}
+
+.usage-session-row strong,
+.usage-session-row > span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-session-row strong {
+  color: var(--text);
+  font-weight: 560;
+}
+
+.usage-session-meter {
+  height: 4px;
+  background: var(--panel-hover);
+}
+
+.usage-session-meter i {
+  display: block;
+  width: var(--usage-ratio);
+  height: 100%;
+  background: var(--cyan);
+}
+
+.usage-session-row code,
+.usage-session-row em {
+  text-align: right;
+}
+
+.usage-session-row code {
+  color: var(--cyan);
+}
+
+.usage-session-row em {
+  color: var(--amber);
+  font: normal 10px/1 "Geist Mono Variable", monospace;
+}
+
+.usage-session-empty {
+  margin: 0;
+  padding: 24px 14px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
 }
 
 .ledger-section {
@@ -2147,6 +2726,7 @@ time,
   .metric-value--updated strong,
   .value-updated,
   .system-summary-value--updated,
+  .usage-summary-value--updated,
   .agent-mark--active,
   .agent-mark--handoff,
   .live-step--active svg,
@@ -2352,6 +2932,43 @@ time,
 }
 
 @media (max-width: 760px) {
+  .usage-history-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .usage-history-controls {
+    flex-wrap: wrap;
+  }
+
+  .usage-history-actions {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .usage-history-actions .usage-history-controls {
+    min-width: 0;
+    flex: 1 1 280px;
+  }
+
+  .usage-history-close-meta {
+    margin-left: auto;
+  }
+
+  .usage-period-label {
+    flex: 1;
+  }
+
+  .usage-session-columns,
+  .usage-session-row {
+    grid-template-columns: minmax(80px, 1fr) minmax(120px, 1.4fr) 70px 64px;
+  }
+
+  .usage-session-columns span:nth-child(3),
+  .usage-session-meter {
+    display: none;
+  }
+
   .ledger-scroll {
     overflow-x: hidden;
   }
@@ -2550,6 +3167,26 @@ time,
 }
 
 @media (max-width: 470px) {
+  .usage-history-heading p {
+    display: none;
+  }
+
+  .usage-history-heading {
+    justify-content: space-between;
+  }
+
+  .usage-history-summary strong {
+    font-size: 11px;
+  }
+
+  .usage-session-columns,
+  .usage-session-row {
+    grid-template-columns: minmax(54px, 0.8fr) minmax(68px, 1fr) 48px 48px;
+    gap: 7px;
+    padding-right: 9px;
+    padding-left: 9px;
+  }
+
   .global-board-heading {
     display: grid;
   }
