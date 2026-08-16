@@ -185,7 +185,6 @@ test("getSessionMetrics summarizes optional session capabilities", () => {
       ],
     }),
     {
-      skills: 2,
       tasks: { completed: 1, total: 2 },
       goalStatus: "active",
       subagents: { active: 2, total: 3 },
@@ -195,7 +194,6 @@ test("getSessionMetrics summarizes optional session capabilities", () => {
 
 test("getSessionMetrics keeps absent tasks and goal visibly absent", () => {
   assert.deepEqual(getSessionMetrics({}), {
-    skills: 0,
     tasks: null,
     goalStatus: null,
     subagents: { active: 0, total: 0 },

@@ -10,7 +10,6 @@ import gsap from "gsap";
 import {
   ArrowSquareOut,
   ArrowsDownUp,
-  BracketsCurly,
   CaretUp,
   CaretDown,
   CaretRight,
@@ -23,7 +22,6 @@ import {
   Code,
   Coins,
   FolderOpen,
-  GearSix,
   GitBranch,
   HourglassMedium,
   Path,
@@ -102,7 +100,6 @@ const sortColumns = [
   { key: "session", label: "Session & assigned work", direction: "asc" },
   { key: "status", label: "Status & current activity", direction: "asc" },
   { key: "time", label: "Session time", direction: "desc" },
-  { key: "skills", label: "Skills", direction: "desc" },
   { key: "tasks", label: "Tasks", direction: "desc" },
   { key: "goal", label: "Goal", direction: "asc" },
   { key: "subagents", label: "Subagents", direction: "desc" },
@@ -248,11 +245,6 @@ export function SessionRow({
       <span className="session-time">
         <strong>{formatDuration(duration)}</strong>
         <small>Started {formatLocalTime(session.startedAt)}</small>
-      </span>
-      <span className="session-skills">
-        <MetaValue label="Skills" accent={metrics.skills > 0}>
-          {metrics.skills || "—"}
-        </MetaValue>
       </span>
       <span className="session-tasks">
         <MetaValue
@@ -840,19 +832,6 @@ function ChildAgentDialog({ child, changes, onClose, collectedAt, clock }) {
           <TaskList plan={child.plan} collectedAt={collectedAt} />
         </article>
 
-        <article className="detail-card">
-          <header className="card-header">
-            <span><BracketsCurly size={16} /> Applied skills</span>
-            <b>{child.skills?.length ?? 0}</b>
-          </header>
-          {child.skills?.length ? (
-            <ul className="skill-chips">
-              {child.skills.map((skill) => <li key={skill}>{skill}</li>)}
-            </ul>
-          ) : (
-            <p className="empty-copy">No skills were observed for this Turn.</p>
-          )}
-        </article>
       </div>
     </dialog>
   );
@@ -1134,20 +1113,6 @@ export function SessionDetail({
               collectedAt={collectedAt}
               changedTasks={changes.taskTitles}
             />
-          </article>
-
-          <article className="detail-card skills-card">
-            <header className="card-header">
-              <span><GearSix size={16} /> Applied skills</span>
-              <b>{session.skills?.length ?? 0}</b>
-            </header>
-            {session.skills?.length ? (
-              <ul className="skill-chips">
-                {session.skills.map((skill) => <li key={skill}>{skill}</li>)}
-              </ul>
-            ) : (
-              <p className="empty-copy empty-copy--compact">No skills were observed for this Turn.</p>
-            )}
           </article>
 
           <article className="detail-card token-card">

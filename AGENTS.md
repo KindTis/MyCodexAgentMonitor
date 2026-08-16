@@ -28,12 +28,12 @@ Rules:
 - Use Geist Sans for UI copy, Geist Mono only for times, IDs, code, and numeric readouts, and Phosphor regular icons throughout.
 - Use the restrained navy palette (`#090C13`, `#101521`, `#161C29`) with cool white text and indigo, violet, cyan, amber, and coral only for hierarchy and state.
 - Modern Dark 상태 팔레트에 녹색·민트 계열을 사용하지 않는다. Running은 인디고, Complete/Planning은 바이올렛, Connected/Live는 시안 블루, Waiting/Syncing은 앰버, Attention/Error는 코랄, inactive 상태는 슬레이트를 사용한다.
-- 정보 역할 컬러는 프로젝트명=쿨 화이트, 세션명=소프트 쿨 화이트, 브랜치/현재 작업=보조 슬레이트, 실행 상태=인디고, Skills/Goal=바이올렛, Tasks/Cost=앰버, 시간/Tokens/Recent activity=시안, Attention/사용량 경고=코랄로 구분한다.
+- 정보 역할 컬러는 프로젝트명=쿨 화이트, 세션명=소프트 쿨 화이트, 브랜치/현재 작업=보조 슬레이트, 실행 상태=인디고, Goal=바이올렛, Tasks/Cost=앰버, 시간/Tokens/Recent activity=시안, Attention/사용량 경고=코랄로 구분한다.
 - 데스크톱 앱 셸은 상단·콘텐츠·하단을 한 뷰포트 안에 배치하고 문서 스크롤 대신 합의된 내부 목록만 스크롤한다.
 - Prefer divider-based regions, one selected-session rail, and flat tinted states; avoid terminal styling, glow effects, decorative gradients, and nested card chrome.
-- The top list must show agent, session/assigned work, state/current activity, session time, skills, task completion, Goal use, and active/total child agents.
+- The top list must show agent, session/assigned work, state/current activity, session time, task completion, Goal use, and active/total child agents.
 - Identify each root session in the top list by the final folder name of its `cwd` and its current Git branch; do not repeat fixed `Codex` or `Root agent` labels there.
-- The selected-session detail must show current work, tokens, skills, Plan Tasks, Goal, child agents, and recent activity.
+- The selected-session detail must show current work, tokens, Plan Tasks, Goal, child agents, and recent activity.
 - Do not show invented progress percentages, Execution Trace, Plan Milestones, or generic KPI cards.
 - Show only root sessions in the top list. Show child agents only in the selected-session detail.
 - Default order is attention needed, running, waiting, planning, inactive, complete, with recent activity first inside a group.
@@ -44,13 +44,13 @@ Rules:
 - On desktop, place the root-session list on the left and the selected-session detail on the right.
 - Size the desktop shell from minimum dimensions and let it grow with the browser. Let the session list consume the ledger's available height and scroll only its overflow; do not reserve a fixed number of rows.
 - Lay out desktop session cards in four bands: agent/state, assignment/session time, current activity, and padded metrics. Point the session caret toward the detail panel: right in the desktop master-detail layout and down in the stacked layout.
-- 데스크톱 상세 3열은 35% / 35% / 30%를 유지한다. 1열은 Current work 전체, 2열은 Goal 25% / Recent activity 40% / Child agents 35%, 3열은 Plan Tasks 60% / Applied skills 20% / Token usage 20%로 배치한다.
+- 데스크톱 상세 3열은 35% / 35% / 30%를 유지한다. 1열은 Current work 전체, 2열은 Goal 25% / Recent activity 40% / Child agents 35%, 3열은 Plan Tasks 75% / Token usage 25%로 배치한다.
 - 루트 상세의 Current work 카드 내부는 Current work 40% / Recent messages 60% 비율을 유지한다. Current work에서는 제목 표시줄, 단계 아이콘, 구분선, 상태 행을 고정하고 작업 문자열만 줄바꿈과 세로 내부 스크롤을 적용한다. Recent messages는 목록만 내부 스크롤하며 두 영역은 서로의 높이를 변경하지 않는다.
 - 루트와 Child Agent의 Current work에는 사용자에게 표시된 최근 agent 메시지 원문을 최신순 10개까지 항목당 최대 3줄로 표시하고 목록만 내부 스크롤한다. 행을 누르면 마우스 가까이에 전체 원문을 표시하며 다음 클릭이나 `Esc`로 닫는다. 실제 새 메시지만 기존 activity 강조 효과를 적용하고 사용자 입력·추론·도구 출력·내부 agent 메시지는 제외한다.
 - 루트와 Child Agent의 Recent activity는 `exec`, `wait` 같은 내부 도구명 대신 안전하게 요약한 명령·대기 대상·작업 수를 표시하고 비밀값은 노출하지 않는다. 실제 새 activity만 강조한다.
 - Do not make the whole selected-session detail an independent scroll area. Limit internal scrolling to long Plan Tasks, child-agent, recent-message, and recent-activity lists.
 - Show Child Agents in five wrapping columns: agent name, state, session time, tasks, and Goal. Do not use horizontal scrolling or hover-revealed details.
-- Open a floating detail dialog when a child-agent row is clicked. Keep Recent activity under Current work in the left half of the first row and show Recent messages as the right-half card; keep applied skills, tasks, and Goal in the second row.
+- Open a floating detail dialog when a child-agent row is clicked. Keep Recent activity under Current work in the left half of the first row and show Recent messages as the right-half card; keep Goal and Tasks as equal halves in the second row.
 - 루트 세션을 선택하지 않았을 때 오른쪽 영역에 Active, Waiting, Inactive, Ended의 4개 글로벌 활동 레인을 표시한다. Planning/Queued는 Active, Needs input/Blocked는 Waiting, Failed는 Ended에 포함하되 각 상태 배지 색상은 유지한다.
 - Global Activity에는 루트와 자식 에이전트를 각각 별도 카드로 표시한다. 자식 카드는 부모의 프로젝트명·브랜치명·세션명을 사용하고 클릭 시 기존 Child Agent 상세 다이얼로그를 바로 연다. Child 태그는 Complete와 구분되는 시안을 사용한다. 카드 마지막 줄은 세션 시간을 좌측에 두고, 루트는 모델명, 자식은 `닉네임 / 모델명`을 우측 한 줄로 표시한다. 좌측 루트 목록의 오른쪽 열은 상태 태그, 모델명, 세션 경과 시간, Started 시각 순서로 우측 정렬한다.
 - 최초 진입과 선택 세션 소멸 시 다른 세션을 자동 선택하지 않는다. 목록 행 재선택이나 상세 닫기는 글로벌 활동 보드로 돌아간다.

@@ -84,7 +84,6 @@ export function getSessionMetrics(session) {
   const children = session.children ?? [];
 
   return {
-    skills: session.skills?.length ?? 0,
     tasks: plan.total ? { completed: plan.completed, total: plan.total } : null,
     goalStatus: session.goal?.status ?? null,
     subagents: {
@@ -139,8 +138,6 @@ function sortValue(session, key) {
       return OPERATIONAL_RANK[normalizeStatus(session.status)];
     case "time":
       return durationInSeconds(session);
-    case "skills":
-      return metrics.skills;
     case "tasks":
       return metrics.tasks ? metrics.tasks.total - metrics.tasks.completed : null;
     case "goal":

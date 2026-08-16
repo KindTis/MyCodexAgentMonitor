@@ -48,7 +48,6 @@ test("세션 목록과 글로벌 레인 카드는 공통 정보 역할 색을 �
 });
 
 test("세션 목록과 상세 카드는 정보 역할별 Modern Dark 강조색을 사용한다", () => {
-  assert.match(css, /\.session-skills \.metric-value strong[\s\S]*?color: var\(--violet\);/);
   assert.match(css, /\.session-tasks \.metric-value strong[\s\S]*?color: var\(--amber\);/);
   assert.match(css, /\.session-goal \.metric-value strong[\s\S]*?color: var\(--violet\);/);
   assert.match(css, /\.session-subagents \.metric-value strong[\s\S]*?color: var\(--blue\);/);
@@ -56,6 +55,5 @@ test("세션 목록과 상세 카드는 정보 역할별 Modern Dark 강조색�
   assert.match(css, /\.activity-card[\s\S]*?--detail-accent: var\(--cyan\);/);
   assert.match(css, /\.goal-card[\s\S]*?--detail-accent: var\(--violet\);/);
   assert.match(css, /\.task-card[\s\S]*?--detail-accent: var\(--amber\);/);
-  assert.match(app, /className="detail-card skills-card"/);
   assert.match(app, /className="detail-card token-card"/);
 });

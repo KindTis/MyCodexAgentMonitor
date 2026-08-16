@@ -1040,12 +1040,12 @@ time,
 
 .session-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-template-areas:
-    "agent agent state state"
-    "assignment assignment time time"
-    "activity activity activity activity"
-    "skills tasks goal subagents";
+    "agent agent agent state state state"
+    "assignment assignment assignment time time time"
+    "activity activity activity activity activity activity"
+    "tasks tasks goal goal subagents subagents";
   align-items: center;
 }
 
@@ -1178,10 +1178,6 @@ time,
   text-align: right;
 }
 
-.session-skills {
-  grid-area: skills;
-}
-
 .session-tasks {
   grid-area: tasks;
 }
@@ -1194,7 +1190,6 @@ time,
   grid-area: subagents;
 }
 
-.session-row > .session-skills,
 .session-row > .session-tasks,
 .session-row > .session-goal,
 .session-row > .session-subagents {
@@ -1389,14 +1384,6 @@ time,
 
 .metric-value--accent strong {
   color: var(--blue);
-}
-
-.session-skills .metric-value small {
-  color: color-mix(in srgb, var(--violet) 68%, var(--muted));
-}
-
-.session-skills .metric-value strong {
-  color: var(--violet);
 }
 
 .session-tasks .metric-value small {
@@ -1862,7 +1849,7 @@ time,
 }
 
 .detail-column--planning {
-  grid-template-rows: minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 3fr) minmax(0, 1fr);
 }
 
 .detail-column + .detail-column {
@@ -1903,8 +1890,7 @@ time,
   --detail-accent: var(--cyan);
 }
 
-.goal-card,
-.skills-card {
+.goal-card {
   --detail-accent: var(--violet);
 }
 
@@ -2095,28 +2081,6 @@ time,
   margin: 0;
   color: var(--secondary);
   font-size: 12px;
-}
-
-.skill-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.skill-chips li {
-  max-width: 100%;
-  overflow: hidden;
-  padding: 5px 7px;
-  border: 1px solid rgb(167 139 250 / 35%);
-  border-radius: 6px;
-  color: #c9bcff;
-  background: rgb(167 139 250 / 9%);
-  font: 11px/1.2 "Geist Mono Variable", monospace;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .task-list,
@@ -2461,7 +2425,7 @@ time,
 .child-dialog-grid > .detail-card {
   min-width: 0;
   min-height: 0;
-  grid-column: span 2;
+  grid-column: span 3;
   margin: 0;
   padding: 14px;
   overflow-y: auto;
@@ -2483,11 +2447,6 @@ time,
 .child-dialog-grid > .detail-card:nth-child(2),
 .child-dialog-grid > .detail-card:nth-child(n + 4) {
   border-left: 1px solid var(--line);
-}
-
-.child-dialog-grid > .child-dialog-current,
-.child-dialog-grid > .child-dialog-messages {
-  grid-column: span 3;
 }
 
 .child-dialog-grid > .detail-card:nth-child(n + 3) {
@@ -2825,7 +2784,7 @@ time,
 
   .session-ledger {
     display: block;
-    min-width: 1160px;
+    min-width: 1090px;
   }
 
   .ledger-header,
@@ -2836,7 +2795,6 @@ time,
       minmax(238px, 1.65fr)
       minmax(225px, 1.5fr)
       minmax(118px, 0.8fr)
-      70px
       70px
       84px
       110px;
@@ -2891,7 +2849,6 @@ time,
   .session-assignment,
   .session-state,
   .session-time,
-  .session-skills,
   .session-tasks,
   .session-goal,
   .session-subagents {
@@ -2907,7 +2864,6 @@ time,
     display: none;
   }
 
-  .session-row > .session-skills,
   .session-row > .session-tasks,
   .session-row > .session-goal,
   .session-row > .session-subagents {
@@ -3006,12 +2962,12 @@ time,
   .session-row {
     height: auto;
     min-height: 138px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     grid-template-areas:
-      "agent agent state state"
-      "assignment assignment time time"
-      "activity activity activity activity"
-      "skills tasks goal subagents";
+      "agent agent agent state state state"
+      "assignment assignment assignment time time time"
+      "activity activity activity activity activity activity"
+      "tasks tasks goal goal subagents subagents";
     gap: 7px 10px;
     padding: 11px 13px 12px;
   }
@@ -3027,7 +2983,6 @@ time,
   .session-agent { grid-area: agent; }
   .session-assignment { grid-area: assignment; }
   .session-time { grid-area: time; }
-  .session-skills { grid-area: skills; }
   .session-tasks { grid-area: tasks; }
   .session-goal { grid-area: goal; }
   .session-subagents { grid-area: subagents; }
@@ -3057,7 +3012,6 @@ time,
     display: block;
   }
 
-  .session-row > .session-skills,
   .session-row > .session-tasks,
   .session-row > .session-goal,
   .session-row > .session-subagents {

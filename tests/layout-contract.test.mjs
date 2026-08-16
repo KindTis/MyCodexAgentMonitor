@@ -65,7 +65,6 @@ test("상세 DOM은 세 개 논리 열의 합의된 카드 순서를 유지한�
     "Recent activity",
     "Child agents",
     "Plan Tasks",
-    "Applied skills",
     "Token usage",
   ];
   let previous = -1;
@@ -74,6 +73,8 @@ test("상세 DOM은 세 개 논리 열의 합의된 카드 순서를 유지한�
     assert.ok(next > previous, `${label} is out of order`);
     previous = next;
   }
+  assert.doesNotMatch(detail, /Applied skills|skills-card|skill-chips/);
+  assert.doesNotMatch(app, /\{ key: "skills", label: "Skills"/);
 });
 
 test("데스크톱 상세 열과 각 열의 행 비율이 정확하다", () => {
@@ -91,7 +92,7 @@ test("데스크톱 상세 열과 각 열의 행 비율이 정확하다", () => {
   );
   assert.match(
     declarations(".detail-column--planning"),
-    /grid-template-rows: minmax\(0, 3fr\) minmax\(0, 1fr\) minmax\(0, 1fr\)/,
+    /grid-template-rows: minmax\(0, 3fr\) minmax\(0, 1fr\)/,
   );
 });
 
@@ -164,7 +165,7 @@ test("Modern Dark 핵심 토큰과 읽기 가능한 기본 글자 크기를 사�
   assert.match(declarations("body"), /font-size: 14px/);
 });
 
-test("Child Agent 상세는 60/40 두 행과 50/50·3등분 열을 사용한다", () => {
+test("Child Agent 상세는 60/40 두 행과 50/50 열을 사용한다", () => {
   const dialog = app.slice(
     app.indexOf("function ChildAgentDialog"),
     app.indexOf("export function ChildAgents"),
@@ -174,7 +175,6 @@ test("Child Agent 상세는 60/40 두 행과 50/50·3등분 열을 사용한다"
     "Recent activity",
     "Goal",
     "Tasks",
-    "Applied skills",
   ];
   let previous = -1;
   for (const label of labels) {
@@ -193,11 +193,7 @@ test("Child Agent 상세는 60/40 두 행과 50/50·3등분 열을 사용한다"
   );
   assert.match(
     declarations(".child-dialog-grid > .detail-card"),
-    /grid-column: span 2/,
-  );
-  assert.match(
-    css,
-    /\.child-dialog-grid > \.child-dialog-current,\s*\.child-dialog-grid > \.child-dialog-messages\s*\{[^}]*grid-column: span 3/s,
+    /grid-column: span 3/,
   );
 });
 
@@ -320,8 +316,8 @@ test("좌측 목록은 상태 아래 모델을 우측 정렬하고 기존 시간
   assert.match(sharedText[1], /white-space: nowrap/);
 
   const row = declarations(".session-row");
-  assert.match(row, /"agent agent state state"/);
-  assert.match(row, /"assignment assignment time time"/);
+  assert.match(row, /"agent agent agent state state state"/);
+  assert.match(row, /"assignment assignment assignment time time time"/);
 });
 
 test("글로벌 보드는 적층·작은 화면에서 2열, 모바일에서 1열로 줄어든다", () => {
@@ -363,6 +359,6 @@ test("작은 화면의 세션 목록은 가로 스크롤 없는 4단 카드로 �
   assert.match(declarations(".ledger-header", small), /display: none/);
   assert.match(
     declarations(".session-row", small),
-    /grid-template-areas: "agent agent state state" "assignment assignment time time" "activity activity activity activity" "skills tasks goal subagents"/,
+    /grid-template-areas: "agent agent agent state state state" "assignment assignment assignment time time time" "activity activity activity activity activity activity" "tasks tasks goal goal subagents subagents"/,
   );
 });

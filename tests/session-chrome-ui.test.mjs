@@ -42,22 +42,22 @@ test("연결 상태는 상태별 아이콘과 공통 하이라이트 배지로 �
   }
 });
 
-test("좌측 목록은 사용 중인 Skills와 미완료 Tasks를 강조한다", () => {
+test("좌측 목록은 Skills를 표시하지 않고 미완료 Tasks만 강조한다", () => {
   assert.equal(typeof SessionRow, "function");
 
-  const renderRow = ({ skills, tasks }) => renderToStaticMarkup(createElement(SessionRow, {
+  const renderRow = ({ tasks }) => renderToStaticMarkup(createElement(SessionRow, {
     session: {
       id: "root-a",
       projectName: "MyCodexAgentMonitor",
       gitBranch: "main",
       session: "세션 목록 강조",
-      assignedWork: "Skills와 Tasks 상태 표시",
+      assignedWork: "Tasks 상태 표시",
       status: "running",
       startedAt: "2026-07-26T06:00:00Z",
       durationSeconds: 75,
       lastActivityAt: "2026-07-26T06:00:02Z",
       currentActivity: null,
-      skills,
+      skills: ["graphify"],
       plan: { tasks },
       goal: null,
       children: [],
@@ -74,20 +74,17 @@ test("좌측 목록은 사용 중인 Skills와 미완료 Tasks를 강조한다",
   );
 
   const activeMarkup = renderRow({
-    skills: ["graphify"],
     tasks: [
       { title: "조사", status: "done" },
       { title: "수정", status: "active" },
     ],
   });
-  assert.match(section(activeMarkup, "session-skills", "session-tasks"), /metric-value--accent/);
+  assert.doesNotMatch(activeMarkup, /session-skills|>Skills</);
   assert.match(section(activeMarkup, "session-tasks", "session-goal"), /metric-value--accent/);
 
   const completeMarkup = renderRow({
-    skills: [],
     tasks: [{ title: "수정", status: "done" }],
   });
-  assert.doesNotMatch(section(completeMarkup, "session-skills", "session-tasks"), /metric-value--accent/);
   assert.doesNotMatch(section(completeMarkup, "session-tasks", "session-goal"), /metric-value--accent/);
 });
 

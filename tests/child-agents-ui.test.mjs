@@ -114,8 +114,6 @@ test("선택한 Child Agent의 합의된 상세 정보를 dialog에 표시한다
     "Recent messages",
     "Recent activity",
     "Run · npm.cmd test",
-    "Applied skills",
-    "frontend-design",
     "Tasks",
     "Wrap child rows",
     "Goal",
@@ -123,6 +121,7 @@ test("선택한 Child Agent의 합의된 상세 정보를 dialog에 표시한다
   ]) {
     assert.match(markup, new RegExp(content));
   }
+  assert.doesNotMatch(markup, /Applied skills|frontend-design|skill-chips/);
   assert.equal(markup.match(/class="message-button"/g)?.length, 10);
   assert.equal(markup.match(/message-item--updated/g)?.length, 1);
   assert.equal(markup.match(/activity-item--updated/g)?.length, 1);
