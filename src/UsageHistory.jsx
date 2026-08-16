@@ -528,10 +528,9 @@ export function UsageHistoryPanel({
   );
 }
 
-export function UsageHistory({ usage, onClose }) {
+export function UsageHistory({ usage, days, onDaysChange, onClose }) {
   const today = todayKey();
   const titleRef = useRef(null);
-  const [days, setDays] = useState(30);
   const [endDate, setEndDate] = useState(today);
   const [selectedDate, setSelectedDate] = useState(today);
   const [data, setData] = useState(null);
@@ -598,7 +597,7 @@ export function UsageHistory({ usage, onClose }) {
         onDaysChange={(value) => {
           if (value === days) return;
           setLoading(true);
-          setDays(value);
+          onDaysChange(value);
           setSelectedDate(endDate);
         }}
         onMovePeriod={movePeriod}

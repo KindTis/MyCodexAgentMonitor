@@ -14,6 +14,7 @@ const {
   applyLiveUsageToHistory,
   getAnchoredUsageTooltipPosition,
   getUsageTooltipPosition,
+  UsageHistory,
   UsageHistoryPanel,
 } = await server.ssrLoadModule("/src/UsageHistory.jsx");
 const css = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
@@ -77,6 +78,18 @@ test("히스토리는 7D/30D와 Prev/Next 및 공통 X 닫기를 제공한다", 
   assert.match(markup, /aria-label="Previous period"/);
   assert.match(markup, /aria-label="Next period" disabled=""/);
   assert.match(markup, /Aug 9 — Aug 15/);
+});
+
+test("히스토리는 외부에서 유지한 날짜 그룹을 표시한다", () => {
+  const renderControlledHistory = (days) => renderToStaticMarkup(createElement(UsageHistory, {
+    days,
+    usage: null,
+    onClose() {},
+    onDaysChange() {},
+  }));
+
+  assert.match(renderControlledHistory(7), /aria-pressed="true">7D<\/button>/);
+  assert.match(renderControlledHistory(30), /aria-pressed="true">30D<\/button>/);
 });
 
 test("그래프는 좌측 Cost와 우측 Tokens 이중축, 캡슐 막대와 선만 표시한다", () => {

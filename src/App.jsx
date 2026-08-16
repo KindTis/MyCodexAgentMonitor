@@ -1286,6 +1286,7 @@ export function App() {
   const [sortState, setSortState] = useState({ key: "operational", direction: "asc" });
   const [isLive, setIsLive] = useState(true);
   const [view, setView] = useState("monitor");
+  const [usageHistoryDays, setUsageHistoryDays] = useState(7);
   const [clock, setClock] = useState(Date.now());
   const [wallClock, setWallClock] = useState(Date.now());
   const latestSnapshot = useRef(EMPTY_SNAPSHOT);
@@ -1655,10 +1656,15 @@ export function App() {
         </section>
 
         {view === "usage" ? (
-          <UsageHistory usage={snapshot.usage} onClose={() => {
-            setView("monitor");
-            requestAnimationFrame(() => usageButtonRef.current?.focus());
-          }} />
+          <UsageHistory
+            usage={snapshot.usage}
+            days={usageHistoryDays}
+            onDaysChange={setUsageHistoryDays}
+            onClose={() => {
+              setView("monitor");
+              requestAnimationFrame(() => usageButtonRef.current?.focus());
+            }}
+          />
         ) : selectedSession ? (
           <SessionDetail
             session={selectedSession}
