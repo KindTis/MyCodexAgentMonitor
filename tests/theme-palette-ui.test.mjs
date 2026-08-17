@@ -38,6 +38,17 @@ test("상단 요약은 세션·비용·사용량·시간 역할을 개별 색으
   assert.match(css, /\.system-summary time\.summary-clock[\s\S]*?color: var\(--cyan\);/);
 });
 
+test("상단 상태와 구분자는 평면 스타일과 고정 간격을 사용한다", () => {
+  assert.equal(app.match(/summary-separated/g)?.length, 4);
+  assert.match(app, /className="summary-stat-divider" aria-hidden="true">·<\/span>/);
+  assert.match(css, /\.summary-separated\s*\{[^}]*margin-left: -8px;[^}]*padding-left: calc\(8px \+ 1ch\);/s);
+  assert.match(css, /\.summary-stat-divider\s*\{[^}]*width: 16px;/s);
+  assert.doesNotMatch(
+    css,
+    /\.connection-state\.connection-state--(?:connected|syncing|error)\s*\{[^}]*background:/s,
+  );
+});
+
 test("세션 목록과 글로벌 레인 카드는 공통 정보 역할 색을 공유한다", () => {
   assert.match(css, /\.session-agent strong,\s*\.global-card-identity strong\s*\{[^}]*color: var\(--text\);/s);
   assert.match(css, /\.session-agent small,\s*\.global-card-identity small\s*\{[^}]*color: var\(--secondary\);/s);

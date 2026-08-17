@@ -78,7 +78,7 @@ time,
   display: grid;
   height: 100dvh;
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -103,8 +103,7 @@ time,
 .feed-state,
 .detail-agent,
 .card-header span,
-.work-state,
-.page-footer {
+.work-state {
   display: flex;
   align-items: center;
 }
@@ -181,6 +180,19 @@ time,
   color: var(--faint);
 }
 
+.summary-separated {
+  position: relative;
+  margin-left: -8px;
+  padding-left: calc(8px + 1ch);
+}
+
+.summary-separated::before {
+  position: absolute;
+  left: 0;
+  color: var(--faint);
+  content: "|";
+}
+
 .summary-group--daily {
   display: inline-flex;
   align-items: center;
@@ -196,6 +208,14 @@ time,
   background: transparent;
   font: inherit;
   cursor: pointer;
+}
+
+.summary-stat-divider {
+  display: inline-block;
+  width: 16px;
+  flex: 0 0 16px;
+  color: var(--faint);
+  text-align: center;
 }
 
 .summary-usage-button:focus-visible {
@@ -324,17 +344,14 @@ time,
 
 .connection-state.connection-state--connected {
   color: var(--cyan);
-  background: rgb(56 189 248 / 7%);
 }
 
 .connection-state.connection-state--syncing {
   color: var(--amber);
-  background: rgb(242 185 93 / 7%);
 }
 
 .connection-state.connection-state--error {
   color: var(--coral);
-  background: rgb(255 122 144 / 7%);
 }
 
 .connection-state--syncing svg {
@@ -2591,22 +2608,6 @@ time,
   text-align: center;
 }
 
-.page-footer {
-  width: calc(100% - 34px);
-  min-height: 45px;
-  justify-content: space-between;
-  gap: 20px;
-  margin: 0 auto;
-  padding: 7px 2px;
-  border-top: 1px solid var(--line);
-  background: transparent;
-}
-
-.page-footer > span {
-  color: var(--muted);
-  font: 11px/1 "Geist Mono Variable", monospace;
-}
-
 .app-toast {
   position: fixed;
   z-index: 40;
@@ -3134,12 +3135,6 @@ time,
     border-bottom: 0;
   }
 
-  .page-footer > span {
-    overflow: hidden;
-    max-width: 58vw;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 }
 
 @media (max-width: 470px) {

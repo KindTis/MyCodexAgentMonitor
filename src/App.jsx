@@ -169,14 +169,14 @@ function StatusBadge({ status, statusBasis }) {
   );
 }
 
-export function ConnectionState({ status, children }) {
+export function ConnectionState({ status }) {
   const meta = connectionStatusMeta[status] ?? connectionStatusMeta.error;
   const Icon = meta.icon;
 
   return (
-    <span className={`status-badge connection-state connection-state--${status}`}>
+    <span className={`summary-item connection-state connection-state--${status}`}>
       <Icon size={13} weight={status === "connected" ? "fill" : "bold"} />
-      {meta.label} · {children}
+      {meta.label}
     </span>
   );
 }
@@ -1151,6 +1151,7 @@ export function formatResetCountdown(resetsAt, now) {
 }
 
 export function SystemSummary({
+  connectionStatus = "error",
   runningCount,
   waitingCount,
   sessionCount,
@@ -1163,7 +1164,8 @@ export function SystemSummary({
 }) {
   return (
     <div className="system-summary">
-      <span className="summary-item summary-item--running">
+      <ConnectionState status={connectionStatus} />
+      <span className="summary-item summary-item--running summary-separated">
         <i className={`live-dot ${isLive ? "" : "live-dot--paused"}`} />
         {runningCount} running
       </span>
@@ -1175,8 +1177,7 @@ export function SystemSummary({
         <UsersThree size={14} />
         {sessionCount} sessions
       </span>
-      <span className="summary-group summary-group--daily">
-        |{" "}
+      <span className="summary-group summary-group--daily summary-separated">
         <button
           type="button"
           className="summary-usage-button"
@@ -1192,7 +1193,7 @@ export function SystemSummary({
               format={formatTokenCount}
             />
           </span>
-          {" · "}
+          <span className="summary-stat-divider" aria-hidden="true">·</span>
           <span className="summary-stat summary-stat--cost">
             <span className="summary-stat-label">Cost</span>{" "}
             <AnimatedUsageValue
@@ -1203,11 +1204,11 @@ export function SystemSummary({
         </button>
       </span>
       <span
-        className="summary-group summary-group--limits"
+        className="summary-group summary-group--limits summary-separated"
         tabIndex={0}
         aria-describedby="limit-reset-tooltip"
       >
-        | <span className="summary-stat summary-stat--five-hour">
+        <span className="summary-stat summary-stat--five-hour">
           5H {formatPercent(usage?.fiveHourUsedPercent)}
         </span>
         {" · "}
@@ -1233,7 +1234,7 @@ export function SystemSummary({
           </span>
         </span>
       </span>
-      <time className="summary-clock">| {formatLocalClock(wallClock)}</time>
+      <time className="summary-clock summary-separated">{formatLocalClock(wallClock)}</time>
     </div>
   );
 }
@@ -1494,7 +1495,6 @@ export function App() {
   )
     ? feedStatus.connectionStatus
     : "error";
-  const feedAge = getRelativeTime(feedStatus.lastSuccessfulAt, new Date());
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -1507,6 +1507,7 @@ export function App() {
         </div>
 
         <SystemSummary
+          connectionStatus={connectionStatus}
           runningCount={runningCount}
           waitingCount={waitingCount}
           sessionCount={visibleSessions.length}
@@ -1659,15 +1660,6 @@ export function App() {
           />
         )}
       </div>
-
-      <footer className="page-footer">
-        <ConnectionState status={connectionStatus}>
-          {feedAge || "waiting for first snapshot"}
-        </ConnectionState>
-        <span>{view === "usage"
-          ? "Usage grouped in Asia/Seoul"
-          : "Session event time shown in local time"}</span>
-      </footer>
 
       {selectionNotice && (
         <button

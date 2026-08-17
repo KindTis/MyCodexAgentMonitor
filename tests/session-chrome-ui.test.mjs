@@ -19,7 +19,7 @@ test.after(async () => {
   await server.close();
 });
 
-test("연결 상태는 상태별 아이콘과 공통 하이라이트 배지로 표시된다", () => {
+test("연결 상태는 상태별 아이콘과 평면 요약 스타일로 표시된다", () => {
   assert.equal(typeof ConnectionState, "function");
 
   for (const [status, label] of [
@@ -30,15 +30,16 @@ test("연결 상태는 상태별 아이콘과 공통 하이라이트 배지로 �
     const markup = renderToStaticMarkup(createElement(
       ConnectionState,
       { status },
-      "local Codex snapshot",
     ));
 
     assert.match(
       markup,
-      new RegExp(`class="status-badge connection-state connection-state--${status}"`),
+      new RegExp(`class="summary-item connection-state connection-state--${status}"`),
     );
+    assert.doesNotMatch(markup, /status-badge/);
     assert.match(markup, /<svg/);
-    assert.match(markup, new RegExp(`${label} · local Codex snapshot`));
+    assert.match(markup, new RegExp(`>${label}</span>$`));
+    assert.doesNotMatch(markup, /local Codex snapshot| · /);
   }
 });
 
@@ -190,8 +191,9 @@ test("Current work는 최근 agent 메시지 10개와 새 메시지 강조를 �
   assert.match(markup, /agent message 10/);
 });
 
-test("상단 요약은 실행·대기·세션 수를 개별 아이콘 항목으로 표시한다", () => {
+test("상단 요약은 연결·실행·대기·세션 상태를 구분해 표시한다", () => {
   const markup = renderToStaticMarkup(createElement(SystemSummary, {
+    connectionStatus: "connected",
     runningCount: 2,
     waitingCount: 1,
     sessionCount: 4,
@@ -200,8 +202,9 @@ test("상단 요약은 실행·대기·세션 수를 개별 아이콘 항목으�
     isLive: true,
   }));
 
-  assert.equal(markup.match(/class="summary-item/g)?.length, 3);
-  assert.equal(markup.match(/<svg/g)?.length, 2);
+  assert.equal(markup.match(/class="summary-item/g)?.length, 4);
+  assert.equal(markup.match(/<svg/g)?.length, 3);
+  assert.match(markup, /Connected/);
   assert.match(markup, /2 running/);
   assert.match(markup, /1 waiting/);
   assert.match(markup, /4 sessions/);
